@@ -48,52 +48,58 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    // Update barcode info
-    await query(
-      'UPDATE tp_barcodes SET product_name = $1, product_image = $2, product_url = $3, status = $4, last_scraped_at = NOW() WHERE id = $5',
-      [scrapedData.name, scrapedData.image, productUrl, 'active', barcodeId]
-    );
+    try {
+      // Update barcode info
+      await query(
+        'UPDATE tp_barcodes SET product_name = $1, product_image = $2, product_url = $3, status = $4, last_scraped_at = NOW() WHERE id = $5',
+        [scrapedData.name?.substring(0, 500), scrapedData.image?.substring(0, 1000), productUrl?.substring(0, 1000), 'active', barcodeId]
+      );
 
-    // Insert product data
-    await query(
-      `INSERT INTO tp_product_data (barcode_id, rating, review_count, question_count, favorite_count, cart_count, sold_count, view_count)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        barcodeId,
-        scrapedData.rating,
-        scrapedData.reviewCount || 0,
-        scrapedData.questionCount || 0,
-        scrapedData.socialProof?.favoriteCount || 0,
-        scrapedData.socialProof?.cartCount || 0,
-        scrapedData.socialProof?.soldCount || 0,
-        scrapedData.socialProof?.viewCount || 0,
-      ]
-    );
+      // Insert product data
+      await query(
+        `INSERT INTO tp_product_data (barcode_id, rating, review_count, question_count, favorite_count, cart_count, sold_count, view_count)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          barcodeId,
+          scrapedData.rating,
+          scrapedData.reviewCount || 0,
+          scrapedData.questionCount || 0,
+          scrapedData.socialProof?.favoriteCount || 0,
+          scrapedData.socialProof?.cartCount || 0,
+          scrapedData.socialProof?.soldCount || 0,
+          scrapedData.socialProof?.viewCount || 0,
+        ]
+      );
 
-    // Insert reviews
-    if (scrapedData.reviews && scrapedData.reviews.length > 0) {
-      // Clear old reviews
-      await query('DELETE FROM tp_reviews WHERE barcode_id = $1', [barcodeId]);
+      // Insert reviews
+      if (scrapedData.reviews && scrapedData.reviews.length > 0) {
+        // Clear old reviews
+        await query('DELETE FROM tp_reviews WHERE barcode_id = $1', [barcodeId]);
 
-      for (const review of scrapedData.reviews) {
-        await query(
-          'INSERT INTO tp_reviews (barcode_id, author, rating, content, review_date) VALUES ($1, $2, $3, $4, $5)',
-          [barcodeId, review.author, review.rating, review.content, review.date]
-        );
+        for (const review of scrapedData.reviews) {
+          await query(
+            'INSERT INTO tp_reviews (barcode_id, author, rating, content, review_date) VALUES ($1, $2, $3, $4, $5)',
+            [barcodeId, review.author?.substring(0, 250), review.rating, review.content, review.date?.substring(0, 90)]
+          );
+        }
       }
+
+      // Generate AI analysis (mock for now)
+      const analysis = generateMockAnalysis(scrapedData.name, scrapedData.rating, scrapedData.reviews);
+      await query('DELETE FROM tp_ai_analysis WHERE barcode_id = $1', [barcodeId]);
+      await query(
+        'INSERT INTO tp_ai_analysis (barcode_id, summary, sentiment, pros, cons, keywords) VALUES ($1, $2, $3, $4, $5, $6)',
+        [barcodeId, analysis.summary, analysis.sentiment, analysis.pros, analysis.cons, analysis.keywords]
+      );
+
+      return NextResponse.json({ success: true, data: scrapedData });
+    } catch (dbError) {
+      console.error('Database write error:', dbError);
+      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+      return NextResponse.json({ error: 'DB hatası kilitlenmesi', details: dbError.message }, { status: 500 });
     }
-
-    // Generate AI analysis
-    const analysis = generateMockAnalysis(scrapedData.name, scrapedData.rating, scrapedData.reviews);
-    await query('DELETE FROM tp_ai_analysis WHERE barcode_id = $1', [barcodeId]);
-    await query(
-      'INSERT INTO tp_ai_analysis (barcode_id, summary, sentiment, pros, cons, keywords) VALUES ($1, $2, $3, $4, $5, $6)',
-      [barcodeId, analysis.summary, analysis.sentiment, analysis.pros, analysis.cons, analysis.keywords]
-    );
-
-    return NextResponse.json({ success: true, data: scrapedData });
   } catch (error) {
-    console.error('Scrape error:', error);
+    console.error('Top level route error:', error);
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }
 }
