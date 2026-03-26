@@ -41,7 +41,7 @@ export async function POST(request) {
       scrapedData = await scrapeTrendyolProduct(productUrl, barcode.barcode);
     } catch (scrapeError) {
       console.error('Scrape failed completely:', scrapeError.message);
-      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+      await query('UPDATE tp_barcodes SET product_name = $1, status = $2 WHERE id = $3', [`TRND_ERR: ${scrapeError.message}`.substring(0, 500), 'error', barcodeId]);
       return NextResponse.json({ 
         error: scrapeError.message || 'Veri çekme başarısız',
         details: 'Trendyol\'dan veri alınamadı. URL\'yi kontrol edin veya daha sonra tekrar deneyin.'
@@ -92,14 +92,16 @@ export async function POST(request) {
         [barcodeId, analysis.summary, analysis.sentiment, analysis.pros, analysis.cons, analysis.keywords]
       );
 
-      return NextResponse.json({ success: true, data: scrapedData });
     } catch (dbError) {
       console.error('Database write error:', dbError);
-      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
-      return NextResponse.json({ error: 'DB hatası kilitlenmesi', details: dbError.message }, { status: 500 });
+      await query('UPDATE tp_barcodes SET product_name = $1, status = $2 WHERE id = $3', [`DB_ERR: ${dbError.message}`.substring(0, 500), 'error', barcodeId]);
+      return NextResponse.json({ error: 'DB hatası', details: dbError.message }, { status: 500 });
     }
   } catch (error) {
-    console.error('Top level route error:', error);
-    return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+    console.error('Scrape top level error:', error);
+    if (barcodeId) {
+      await query('UPDATE tp_barcodes SET product_name = $1, status = $2 WHERE id = $3', [`SCRAPE_ERR: ${error.message}`.substring(0, 500), 'error', barcodeId]);
+    }
+    return NextResponse.json({ error: 'Sunucu hatası', details: error.message }, { status: 500 });
   }
 }
