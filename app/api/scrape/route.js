@@ -36,20 +36,37 @@ export async function POST(request) {
     // Update status
     await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['scraping', barcodeId]);
 
-    // We are transitioning to a Queue/Webhook architecture with n8n + Apify
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || 'https://n8n.webtasarimi.net/webhook/trigger-trendyol-scrape';
+    // Native Apify API Integration
+    const apifyToken = process.env.APIFY_API_TOKEN;
+    if (!apifyToken) {
+      console.warn('[Scrape] APIFY_API_TOKEN is missing in ENV. You must configure this in Dokploy.');
+    }
     
-    console.log(`[Queue] Triggering N8N Webhook for barcode: ${barcodeId} -> ${productUrl}`);
+    console.log(`[Native Apify] Triggering Apify Actor for barcode: ${barcodeId} -> ${productUrl}`);
     
-    // Fire and forget, do not await the completion as Apify takes minutes
-    fetch(n8nWebhookUrl, {
+    // Create an ad-hoc webhook for this specific run that tells Apify to callback our server
+    const webhooksArr = [{
+      eventTypes: ["ACTOR.RUN.SUCCEEDED"],
+      requestUrl: "https://aktarmatik.webtasarimi.net/api/webhook/apify",
+      payloadTemplate: `{"barcodeId": "${barcodeId}", "datasetId": "{{resource.defaultDatasetId}}"}`
+    }];
+    const webhooksB64 = Buffer.from(JSON.stringify(webhooksArr)).toString('base64');
+    
+    const apifyEndpoint = `https://api.apify.com/v2/acts/AoPP8ru9uKws5t80G/runs?token=${apifyToken}&webhooks=${webhooksB64}`;
+
+    // Fire and forget to Apify
+    fetch(apifyEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        barcodeId: barcodeId, 
-        url: productUrl 
+        startUrls: [{ url: productUrl }],
+        maxReviews: 25,
+        maxQuestions: 25,
+        proxyConfiguration: { useApifyProxy: true }
       })
-    }).catch(e => console.error('[N8N Trigger Error]', e));
+    }).then(res => res.json()).then(data => {
+      console.log(`[Native Apify] Run started with ID:`, data?.data?.id);
+    }).catch(e => console.error('[Apify Trigger Error]', e));
 
     // Return immediately so the UI doesn't hang
     return NextResponse.json({ 

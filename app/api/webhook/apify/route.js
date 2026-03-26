@@ -14,13 +14,25 @@ export async function POST(request) {
     }
 
     const data = await request.json();
-    const { barcodeId, apifyDataArr } = data;
+    let { barcodeId, datasetId, apifyDataArr } = data;
+
+    if (datasetId) {
+      console.log(`[Webhook] Native Apify trigger received. Fetching dataset ${datasetId} for barcode: ${barcodeId}`);
+      try {
+        const apifyToken = process.env.APIFY_API_TOKEN || '';
+        const tokenQuery = apifyToken ? `?token=${apifyToken}` : '';
+        const res = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items${tokenQuery}`);
+        apifyDataArr = await res.json();
+      } catch (e) {
+        console.error('Failed to fetch dataset from Apify:', e);
+      }
+    }
 
     if (!barcodeId || !apifyDataArr || !Array.isArray(apifyDataArr)) {
       return NextResponse.json({ error: 'Geçersiz webhook payload yapısı' }, { status: 400 });
     }
 
-    console.log(`[Webhook] N8N/Apify data received for barcode: ${barcodeId}`);
+    console.log(`[Webhook] Processing data array for barcode: ${barcodeId} with ${apifyDataArr.length} items`);
 
     // Parse Apify polymorphic data structure
     const productData = apifyDataArr.find(item => item.type === 'product');
