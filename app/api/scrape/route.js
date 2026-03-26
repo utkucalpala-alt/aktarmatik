@@ -104,6 +104,7 @@ export async function POST(request) {
         [barcodeId, analysis.summary, analysis.sentiment, analysis.pros, analysis.cons, analysis.keywords]
       );
 
+      return NextResponse.json({ success: true, data: scrapedData });
     } catch (dbError) {
       console.error('Database write error:', dbError);
       await query('UPDATE tp_barcodes SET product_name = $1, status = $2 WHERE id = $3', [`DB_ERR: ${dbError.message}`.substring(0, 500), 'error', barcodeId]);
