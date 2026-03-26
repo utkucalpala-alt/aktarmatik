@@ -41,6 +41,15 @@ export async function GET(request, { params }) {
       [id]
     );
 
+    // Get questions
+    let questions = { rows: [] };
+    try {
+      questions = await query(
+        'SELECT * FROM tp_questions WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 25',
+        [id]
+      );
+    } catch(e) { /* ignore if table not created yet */ }
+
     // Get AI analysis
     const analysis = await query(
       'SELECT * FROM tp_ai_analysis WHERE barcode_id = $1 ORDER BY analyzed_at DESC LIMIT 1',
@@ -58,6 +67,7 @@ export async function GET(request, { params }) {
       productData: productData.rows[0] || null,
       history: history.rows,
       reviews: reviews.rows,
+      questions: questions.rows,
       analysis: analysis.rows[0] || null,
       widget: widget.rows[0] || null,
     });

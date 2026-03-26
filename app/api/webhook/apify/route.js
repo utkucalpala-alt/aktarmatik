@@ -25,6 +25,7 @@ export async function POST(request) {
     // Parse Apify polymorphic data structure
     const productData = apifyDataArr.find(item => item.type === 'product');
     const reviewsData = apifyDataArr.filter(item => item.type === 'review');
+    const questionsData = apifyDataArr.filter(item => item.type === 'question_answer' || item.type === 'question' || item.text);
 
     if (!productData) {
        await query('UPDATE tp_barcodes SET status = $1, product_name = $2 WHERE id = $3', 
@@ -84,6 +85,34 @@ export async function POST(request) {
           'INSERT INTO tp_reviews (barcode_id, author, rating, content, review_date) VALUES ($1, $2, $3, $4, $5)',
           [barcodeId, safeAuthor, review.rating || 5, review.comment || '', safeDate]
         );
+      }
+    }
+
+    // Insert questions
+    if (questionsData.length > 0) {
+      await query('DELETE FROM tp_questions WHERE barcode_id = $1', [barcodeId]);
+
+      for (const q of questionsData) {
+        const safeUser = String(q.userName || q.user_full_name || q.userFullName || 'Müşteri').substring(0, 250);
+        const qText = String(q.text || q.question_text || q.question || '').substring(0, 2000);
+        let aText = '';
+        if (typeof q.answer === 'object' && q.answer?.text) aText = q.answer.text;
+        else if (typeof q.answer === 'string') aText = q.answer;
+        else if (q.answer_text) aText = q.answer_text;
+        aText = String(aText).substring(0, 2000);
+
+        let qDate = '';
+        const rawDate = q.creationDate || q.created_at || q.date;
+        if (rawDate) {
+          qDate = new Date(rawDate).toLocaleDateString('tr-TR');
+        }
+
+        if (qText.length > 3) {
+          await query(
+            'INSERT INTO tp_questions (barcode_id, user_name, question_text, answer_text, question_date) VALUES ($1, $2, $3, $4, $5)',
+            [barcodeId, safeUser, qText, aText, qDate]
+          );
+        }
       }
     }
 
