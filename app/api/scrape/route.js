@@ -49,10 +49,20 @@ export async function POST(request) {
     }
 
     try {
+      // Safely parse potentially non-string properties from scraper (e.g. JSON-LD objects)
+      const safeName = typeof scrapedData.name === 'string' ? scrapedData.name.substring(0, 500) : String(scrapedData.name || '').substring(0, 500);
+      let safeImage = '';
+      if (typeof scrapedData.image === 'string') safeImage = scrapedData.image;
+      else if (scrapedData.image && scrapedData.image.url) safeImage = scrapedData.image.url;
+      else if (scrapedData.image) safeImage = String(scrapedData.image);
+      safeImage = safeImage.substring(0, 1000);
+      
+      const safeUrl = typeof productUrl === 'string' ? productUrl.substring(0, 1000) : String(productUrl || '').substring(0, 1000);
+
       // Update barcode info
       await query(
         'UPDATE tp_barcodes SET product_name = $1, product_image = $2, product_url = $3, status = $4, last_scraped_at = NOW() WHERE id = $5',
-        [scrapedData.name?.substring(0, 500), scrapedData.image?.substring(0, 1000), productUrl?.substring(0, 1000), 'active', barcodeId]
+        [safeName, safeImage, safeUrl, 'active', barcodeId]
       );
 
       // Insert product data
@@ -77,9 +87,11 @@ export async function POST(request) {
         await query('DELETE FROM tp_reviews WHERE barcode_id = $1', [barcodeId]);
 
         for (const review of scrapedData.reviews) {
+          const safeAuthor = typeof review.author === 'string' ? review.author.substring(0, 250) : String(review.author || '').substring(0, 250);
+          const safeDate = typeof review.date === 'string' ? review.date.substring(0, 90) : String(review.date || '').substring(0, 90);
           await query(
             'INSERT INTO tp_reviews (barcode_id, author, rating, content, review_date) VALUES ($1, $2, $3, $4, $5)',
-            [barcodeId, review.author?.substring(0, 250), review.rating, review.content, review.date?.substring(0, 90)]
+            [barcodeId, safeAuthor, review.rating, review.content, safeDate]
           );
         }
       }
