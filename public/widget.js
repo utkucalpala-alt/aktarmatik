@@ -14,33 +14,40 @@
   script.parentNode.insertBefore(container, script.nextSibling);
 
   const isDark = theme === 'dark';
-  const bg = isDark ? '#0a0b14' : '#ffffff';
-  const cardBg = isDark ? 'rgba(26,27,58,0.8)' : 'rgba(248,249,250,0.9)';
-  const text = isDark ? '#f0f0ff' : '#1a1a2e';
-  const muted = isDark ? '#8b8bab' : '#666';
-  const border = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+  const isNative = theme === 'native';
+  
+  const bg = isNative ? 'transparent' : (isDark ? '#0a0b14' : '#ffffff');
+  const cardBg = isNative ? 'transparent' : (isDark ? 'rgba(26,27,58,0.8)' : 'rgba(248,249,250,0.9)');
+  const text = isNative ? 'inherit' : (isDark ? '#f0f0ff' : '#1a1a2e');
+  const muted = isNative ? 'inherit' : (isDark ? '#8b8bab' : '#666');
+  const border = isNative ? 'transparent' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)');
+  const radius = isNative ? '0px' : '16px';
+  const padding = isNative ? '0px' : '20px';
+  const shadow = isNative ? 'none' : (isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.05)');
 
   const styles = `
-    #${container.id} * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
-    #${container.id} .tp-w { background: ${cardBg}; border: 1px solid ${border}; border-radius: 16px; padding: 20px; color: ${text}; backdrop-filter: blur(20px); }
-    #${container.id} .tp-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    #${container.id} .tp-rating { font-size: 24px; font-weight: 800; }
-    #${container.id} .tp-count { font-size: 13px; color: ${muted}; }
-    #${container.id} .tp-social { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
-    #${container.id} .tp-badge { background: ${isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)'}; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
-    #${container.id} .tp-ai { font-size: 13px; color: ${muted}; line-height: 1.6; margin: 12px 0; }
-    #${container.id} .tp-review { padding: 12px; border: 1px solid ${border}; border-radius: 8px; margin: 6px 0; font-size: 13px; }
-    #${container.id} .tp-review-author { font-weight: 600; margin-bottom: 4px; }
-    #${container.id} .tp-review-text { color: ${muted}; line-height: 1.5; }
-    #${container.id} .tp-footer { margin-top: 12px; font-size: 10px; color: ${muted}; opacity: 0.5; text-align: right; }
-    #${container.id} .tp-footer a { color: inherit; text-decoration: none; }
+    #${container.id} * { box-sizing: border-box; margin: 0; padding: 0; font-family: ${isNative ? 'inherit' : "'Inter', -apple-system, sans-serif"}; }
+    #${container.id} .tp-w { background: ${cardBg}; border: ${isNative?'none':`1px solid ${border}`}; border-radius: ${radius}; padding: ${padding}; color: ${text}; box-shadow: ${shadow}; ${!isNative ? 'backdrop-filter: blur(20px);' : ''} width: 100%; transition: all 0.3s; }
+    #${container.id} .tp-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    #${container.id} .tp-rating { font-size: 28px; font-weight: 800; color: ${isNative ? 'inherit' : (isDark ? '#fff' : '#000')}; }
+    #${container.id} .tp-count { font-size: 14px; color: ${isNative ? 'inherit' : muted}; opacity: 0.8;}
+    #${container.id} .tp-social { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+    #${container.id} .tp-badge { background: ${isNative ? 'rgba(108, 92, 231, 0.1)' : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}; border: ${isNative ? '1px solid rgba(108, 92, 231, 0.2)' : 'none'}; color: ${isNative ? 'inherit' : 'inherit'}; padding: 6px 12px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
+    #${container.id} .tp-ai { font-size: 14px; line-height: 1.6; margin: 20px 0; padding: 16px; background: ${isNative ? 'rgba(0, 184, 148, 0.05)' : (isDark ? 'rgba(0, 184, 148, 0.05)' : '#f6ffed')}; border-left: 4px solid #00b894; border-radius: 0 8px 8px 0; }
+    #${container.id} .tp-review { padding: 16px; border: 1px solid ${border}; border-radius: 12px; margin: 12px 0; font-size: 14px; background: ${isNative?'transparent':(isDark?'rgba(255,255,255,0.02)':'#fff')}; }
+    #${container.id} .tp-review-author { font-weight: 600; margin-bottom: 6px; display:flex; justify-content: space-between; align-items: center; color: ${text}; }
+    #${container.id} .tp-review-stars { font-size: 12px; color: #fdcb6e; }
+    #${container.id} .tp-review-text { color: ${isNative ? 'inherit' : muted}; line-height: 1.6; opacity: 0.9; }
+    #${container.id} .tp-footer { margin-top: 20px; font-size: 11px; opacity: 0.6; text-align: right; }
+    #${container.id} .tp-footer a { color: inherit; text-decoration: none; font-weight: 600; }
+    #${container.id} .tp-footer a:hover { text-decoration: underline; opacity: 1; }
   `;
 
   const styleEl = document.createElement('style');
   styleEl.textContent = styles;
   document.head.appendChild(styleEl);
 
-  container.innerHTML = '<div class="tp-w"><div style="text-align:center;padding:20px;color:' + muted + '">Yükleniyor...</div></div>';
+  container.innerHTML = '<div class="tp-w"><div style="text-align:center;padding:20px;opacity:0.6;">⏳ Canlı veriler yükleniyor...</div></div>';
 
   fetch(apiBase + '/api/widget/' + token)
     .then(r => r.json())
