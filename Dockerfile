@@ -50,15 +50,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Tell Playwright to use system Chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-# Disable Chromium crash reporter
-ENV CHROME_CRASHPAD_PIPE_NAME=
-ENV CHROME_FLAGS="--no-sandbox --disable-crash-reporter"
 
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN adduser --system --uid 1001 --home /home/nextjs nextjs
 
-# Create necessary temp dirs with proper permissions
-RUN mkdir -p /tmp/.chromium && chown nextjs:nodejs /tmp/.chromium
+# Create writable HOME and temp directories for Chromium crashpad
+RUN mkdir -p /home/nextjs/.cache /home/nextjs/.config /tmp/.chromium \
+    && chown -R nextjs:nodejs /home/nextjs \
+    && chown nextjs:nodejs /tmp/.chromium
+
+# Set XDG dirs so Chromium can write crash reports and cache
+ENV HOME=/home/nextjs
+ENV XDG_CONFIG_HOME=/home/nextjs/.config
+ENV XDG_CACHE_HOME=/home/nextjs/.cache
 
 # Copy public assets
 COPY --from=builder /app/public ./public
