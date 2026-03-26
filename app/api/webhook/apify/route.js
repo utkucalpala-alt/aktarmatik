@@ -64,22 +64,23 @@ export async function POST(request) {
       `UPDATE tp_barcodes 
        SET product_name = $1, 
            product_url = $2, 
-           image = $3, 
-           rating = $4, 
-           review_count = $5,
-           favorite_count = $6,
-           status = 'Aktif',
-           updated_at = NOW()
-       WHERE id = $7`,
+           product_image = $3, 
+           status = 'active',
+           last_scraped_at = NOW()
+       WHERE id = $4`,
       [
         safeProductName,
         safeProductUrl,
         safeImage,
-        rating,
-        reviewCount,
-        favoriteCount,
         barcodeId
       ]
+    );
+
+    // Insert into product data history
+    await query(
+      `INSERT INTO tp_product_data (barcode_id, rating, review_count, favorite_count)
+       VALUES ($1, $2, $3, $4)`,
+      [barcodeId, rating, reviewCount, favoriteCount]
     );
 
     // Insert reviews
