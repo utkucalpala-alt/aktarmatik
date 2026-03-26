@@ -38,39 +38,11 @@ export async function POST(request) {
 
     let scrapedData;
     try {
-      scrapedData = await scrapeTrendyolProduct(productUrl);
+      scrapedData = await scrapeTrendyolProduct(productUrl, barcode.barcode);
     } catch (scrapeError) {
-      // If scraping fails, use mock data for demo
-      scrapedData = {
-        name: `Trendyol Ürün #${barcode.barcode}`,
-        rating: 4.3,
-        reviewCount: 128,
-        questionCount: 15,
-        image: '',
-        socialProof: {
-          favoriteCount: 2450,
-          cartCount: 89,
-          soldCount: 5200,
-          viewCount: 12000,
-        },
-        reviews: Array.from({ length: 10 }, (_, i) => ({
-          author: `Kullanıcı ${i + 1}`,
-          rating: Math.floor(Math.random() * 2) + 4,
-          content: [
-            'Ürün kalitesi gayet iyi, tavsiye ederim.',
-            'Hızlı kargo, güzel paketleme. Teşekkürler.',
-            'Beden tam oturdu, kumaşı kaliteli.',
-            'Fiyatına göre gayet iyi bir ürün.',
-            'Rengi fotoğraftakinden biraz farklı ama yine de güzel.',
-            'İkinci defa alıyorum, çok memnunum.',
-            'Kargo biraz geç geldi ama ürün güzel.',
-            'Beklentilerimi karşıladı, puanı hak ediyor.',
-            'Kaliteli malzeme, dikişleri düzgün.',
-            'Hediye olarak aldım, çok beğenildi.',
-          ][i],
-          date: new Date(Date.now() - i * 86400000).toLocaleDateString('tr-TR'),
-        })),
-      };
+      console.error('Scrape failed completely:', scrapeError);
+      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+      return NextResponse.json({ error: 'Veri çekme başarısız' }, { status: 500 });
     }
 
     // Update barcode info

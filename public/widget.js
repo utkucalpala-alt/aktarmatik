@@ -82,7 +82,7 @@
         });
       }
 
-      html += '<div class="tp-footer">Powered by <a href="#">TrendProof</a></div>';
+      html += '<div class="tp-footer">Powered by <a href="https://aktarmatik.webtasarimi.net">AKTARMATIK</a></div>';
       html += '</div>';
       container.innerHTML = html;
     })
