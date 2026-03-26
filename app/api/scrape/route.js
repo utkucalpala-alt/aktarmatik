@@ -28,9 +28,9 @@ export async function POST(request) {
     const barcode = barcodeResult.rows[0];
     let productUrl = barcode.product_url;
 
-    // If no URL, construct from barcode
+    // If no URL, use search to find the product
     if (!productUrl) {
-      productUrl = `https://www.trendyol.com/brand/product-p-${barcode.barcode}`;
+      productUrl = `https://www.trendyol.com/sr?q=${barcode.barcode}`;
     }
 
     // Update status
