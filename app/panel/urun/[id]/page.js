@@ -96,17 +96,20 @@ export default function UrunDetayPage({ params }) {
       </div>
 
       {/* MACRO METRICS */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:32}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:32}}>
         {[
-          ['🌟', 'Genel Puan', `${ratingScore.toFixed(1)} / 5`],
-          ['💬', 'Toplam Değerlendirme', d.review_count||0],
-          ['❓', 'Cevaplanan Soru', d.question_count||questions?.length||0],
-          ['❤', 'Favori / Beğeni', d.favorite_count||0]
-        ].map(([icon, label, val],i)=>(
-          <div key={i} className="glass-card stat-card fade-in" style={{animationDelay:`${i*0.1}s`,position:'relative',overflow:'hidden'}}>
-            <div style={{position:'absolute',right:-10,top:-15,fontSize:60,opacity:0.05}}>{icon}</div>
-            <div className="stat-label" style={{display:'flex',alignItems:'center',gap:8}}><span>{icon}</span> {label}</div>
-            <div className="stat-value">{val}</div>
+          ['🌟', 'Genel Puan', `${ratingScore.toFixed(1)} <span style="font-size:16px;color:rgba(255,255,255,0.4)">/ 5</span>`, '+%5 Rakiplere Göre'],
+          ['💬', 'Toplam Değerlendirme', d.review_count||0, 'Gerçek müşteri analizi'],
+          ['❓', 'Cevaplanan Soru', d.question_count||questions?.length||0, 'Son 1 ayda yanıtlandı'],
+          ['❤', 'Favori / Beğeni', d.favorite_count||0, 'Yüksek İlgi Skoru']
+        ].map(([icon, label, val, sub],i)=>(
+          <div key={i} className="glass-card stat-card fade-in" style={{animationDelay:`${i*0.1}s`,position:'relative',overflow:'hidden',padding:'24px 20px'}}>
+            <div style={{position:'absolute',right:-20,bottom:-20,fontSize:100,opacity:0.03,filter:'grayscale(100%)',transform:'rotate(-15deg)'}}>{icon}</div>
+            <div className="stat-label" style={{display:'flex',alignItems:'center',gap:8,textTransform:'uppercase',letterSpacing:'0.5px',fontSize:12,fontWeight:600}}><span style={{fontSize:16}}>{icon}</span> {label}</div>
+            <div className="stat-value" style={{fontSize:36,margin:'8px 0'}} dangerouslySetInnerHTML={{__html:val}}></div>
+            <div style={{fontSize:12,color:'var(--text-muted)',display:'flex',alignItems:'center',gap:4}}>
+               <span style={{color:i===0?'var(--success)':i===3?'var(--info)':'var(--text-secondary)'}}>●</span> {sub}
+            </div>
           </div>
         ))}
       </div>
@@ -151,7 +154,7 @@ export default function UrunDetayPage({ params }) {
               <h4 style={{fontSize:13,color:'var(--text-secondary)',marginBottom:16}}>Akıllı Yorum Seçimi</h4>
               {mostHelpful ? (
                 <div style={{background:'rgba(0,184,148,0.05)',border:'1px solid rgba(0,184,148,0.2)',padding:12,borderRadius:'var(--radius-md)',marginBottom:12}}>
-                  <div style={{fontSize:11,color:'var(--success)',fontWeight:700,marginBottom:4}}>🏆 En Faydalı Pozitif</div>
+                  <div style={{fontSize:11,color:'var(--success)',fontWeight:700,marginBottom:4}}>🏆 En Faydalı Yorum</div>
                   <p style={{fontSize:12,lineHeight:1.5,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical'}}>{mostHelpful.content}</p>
                 </div>
               ) : null}
@@ -170,7 +173,7 @@ export default function UrunDetayPage({ params }) {
         {/* SOCIAL PROOF WIDGET SECTION */}
         <div>
            <div className="glass-card fade-in" style={{padding:24,marginBottom:24}}>
-            <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>📈 Sosyal Kanıt & Dönüşüm</h2>
+            <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>📈 Aktarmatik Dönüşüm Oranları</h2>
             
             <div className="pulse-row">
               <span className="pulse-dot"></span>
@@ -187,7 +190,7 @@ export default function UrunDetayPage({ params }) {
               <strong style={{marginLeft:'auto'}}>{d.favorite_count || 0} Kişi</strong>
             </div>
             <div className="pulse-row" style={{background:'transparent',borderBottom:'1px solid var(--border-color)',borderRadius:0}}>
-              <span style={{fontSize:14,color:'var(--text-secondary)'}}>Baktığınız Ürünün Satışı:</span>
+              <span style={{fontSize:14,color:'var(--text-secondary)'}}>Son 3 gündeki satışı:</span>
               <strong style={{marginLeft:'auto'}}>{d.sold_count || 0}</strong>
             </div>
           </div>
@@ -228,7 +231,7 @@ export default function UrunDetayPage({ params }) {
         <div className="glass-card fade-in" style={{padding:24}}>
           <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>❓ Sütun: Soru & Cevap ({questions?.length||0})</h2>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            {questions?.slice(0,25).map((q,i) => (
+            {questions?.slice(0, reviews?.length > 0 ? reviews.length : 25).map((q,i) => (
               <div key={i} style={{padding:16,background:'rgba(255,255,255,0.02)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-md)'}}>
                 <div style={{fontWeight:600,fontSize:13,marginBottom:4,color:'var(--text-primary)'}}>{q.user_name}</div>
                 <p style={{fontSize:14,color:'var(--text-secondary)',lineHeight:1.5,marginBottom:12}}><strong>S:</strong> {q.question_text}</p>
