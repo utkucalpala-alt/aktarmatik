@@ -251,6 +251,73 @@ a {
   margin-top: 4px;
 }
 
+/* AI Premium Cards */
+.ai-card {
+  background: linear-gradient(145deg, rgba(26,27,58,0.8) 0%, rgba(10,11,20,0.9) 100%);
+  border: 1px solid rgba(108, 92, 231, 0.2);
+  box-shadow: inset 0 0 20px rgba(108, 92, 231, 0.05);
+}
+
+.ai-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(108, 92, 231, 0.8), transparent);
+}
+
+/* Progress Bars */
+.progress-container {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: 8px;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px currentColor;
+}
+
+.progress-green { background: var(--success); color: var(--success); }
+.progress-yellow { background: var(--warning); color: var(--warning); }
+.progress-red { background: var(--danger); color: var(--danger); }
+.progress-info { background: var(--info); color: var(--info); }
+
+/* Pulse Animation for Social Proof */
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 184, 148, 0); }
+  100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
+}
+
+.pulse-dot {
+  width: 8px; height: 8px;
+  background-color: var(--success);
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse-ring 2s infinite;
+  margin-right: 8px;
+}
+
+.pulse-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.02);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+.pulse-row:hover {
+  background: rgba(255,255,255,0.05);
+  transform: translateX(4px);
+}
+
 /* Shimmer animation for loading */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
