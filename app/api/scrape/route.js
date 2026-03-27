@@ -5,7 +5,7 @@ import { getUserFromRequest } from '@/lib/auth';
 // Poll Apify run status and process results when done
 async function pollAndProcess(runId, barcodeId, apifyToken) {
   const maxAttempts = 60; // 5 minutes max (60 * 5s)
-  const pollInterval = 5000; // 5 seconds
+  const pollInterval = 5000;
 
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(resolve => setTimeout(resolve, pollInterval));
@@ -27,7 +27,7 @@ async function pollAndProcess(runId, barcodeId, apifyToken) {
         );
         const apifyDataArr = await dataRes.json();
 
-        // Call our own webhook handler logic
+        // Call our own webhook handler with the data
         const webhookRes = await fetch('https://aktarmatik.webtasarimi.net/api/webhook/apify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -49,14 +49,12 @@ async function pollAndProcess(runId, barcodeId, apifyToken) {
         return;
       }
 
-      // Still running, continue polling
       console.log(`[Apify Poll] Run ${runId} status: ${status} (attempt ${i + 1}/${maxAttempts})`);
     } catch (e) {
       console.error(`[Apify Poll] Error checking run ${runId}:`, e.message);
     }
   }
 
-  // Timeout
   console.error(`[Apify Poll] Run ${runId} timed out after ${maxAttempts} attempts`);
   await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
 }
@@ -74,7 +72,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Barkod ID gerekli' }, { status: 400 });
     }
 
-    // Get barcode
     const barcodeResult = await query(
       'SELECT * FROM tp_barcodes WHERE id = $1 AND user_id = $2',
       [barcodeId, user.id]
@@ -86,33 +83,31 @@ export async function POST(request) {
     const barcode = barcodeResult.rows[0];
     let productUrl = barcode.product_url;
 
-    // If no URL, use search to find the product
     if (!productUrl) {
       productUrl = `https://www.trendyol.com/sr?q=${barcode.barcode}`;
     }
 
-    // Update status
     await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['scraping', barcodeId]);
 
-    // Native Apify API Integration
     const apifyToken = process.env.APIFY_API_TOKEN;
     if (!apifyToken) {
       await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
       return NextResponse.json({ error: 'APIFY_API_TOKEN tanımlı değil' }, { status: 500 });
     }
 
-    console.log(`[Native Apify] Triggering Apify Actor for barcode: ${barcodeId} -> ${productUrl}`);
+    console.log(`[Native Apify] Triggering for barcode: ${barcodeId} -> ${productUrl}`);
 
     const apifyEndpoint = `https://api.apify.com/v2/acts/fatihtahta~trendyol-scraper/runs?token=${apifyToken}`;
 
+    // Use exact input format from Apify documentation
     const apifyRes = await fetch(apifyEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        startUrls: [{ url: productUrl }],
-        maxReviews: 25,
-        maxQuestions: 25,
-        proxyConfiguration: { useApifyProxy: true }
+        startUrls: [productUrl],
+        getReviews: true,
+        getQna: true,
+        limit: 100
       })
     });
 
@@ -125,21 +120,20 @@ export async function POST(request) {
 
     const apifyData = await apifyRes.json();
     const runId = apifyData?.data?.id;
-    console.log(`[Native Apify] Run started with ID: ${runId}. Starting background polling.`);
+    console.log(`[Native Apify] Run started: ${runId}. Polling in background.`);
 
-    // Start polling in background (don't await - fire and forget)
+    // Start polling in background
     pollAndProcess(runId, barcodeId, apifyToken).catch(e => {
       console.error(`[Apify Poll] Unhandled error for barcode ${barcodeId}:`, e.message);
       query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]).catch(() => {});
     });
 
-    // Return immediately so the UI doesn't hang
     return NextResponse.json({
       success: true,
       message: 'Apify işlemi başlatıldı, veriler otomatik gelecek',
       status: 'scraping',
-      barcodeId: barcodeId,
-      runId: runId
+      barcodeId,
+      runId
     });
 
   } catch (error) {
