@@ -5,66 +5,52 @@ import { getUserFromRequest } from '@/lib/auth';
 const MAX_QNA = 15;
 const MAX_REVIEWS = 15;
 
-// Poll Apify run and process results + scrape reviews with Playwright
-async function pollAndProcess(runId, barcodeId, productUrl, apifyToken) {
-  const maxAttempts = 60;
-  const pollInterval = 5000;
+// Call our custom Dokploy scraper and forward data to webhook
+async function triggerCustomScraper(barcodeId, productUrl) {
+  try {
+    const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:4000/scrape';
+    const scraperSecret = process.env.SCRAPER_SECRET || 'aktarmatik-scraper-secret';
+    
+    console.log(`[Scrape] Calling custom scraper for barcode ${barcodeId} at ${scraperUrl}`);
+    
+    const res = await fetch(scraperUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': scraperSecret
+      },
+      body: JSON.stringify({ url: productUrl })
+    });
 
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
-
-    try {
-      const statusRes = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${apifyToken}`);
-      const statusData = await statusRes.json();
-      const status = statusData?.data?.status;
-
-      if (status === 'SUCCEEDED') {
-        const datasetId = statusData?.data?.defaultDatasetId;
-        console.log(`[Scrape] Apify run ${runId} succeeded. Dataset: ${datasetId}`);
-
-        // Fetch Apify dataset (product + QnA)
-        const dataRes = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${apifyToken}`);
-        const apifyDataArr = await dataRes.json();
-
-        // Scrape reviews with local Playwright (parallel with webhook processing)
-        let reviews = [];
-        try {
-          const { scrapeReviews } = await import('@/lib/review-scraper');
-          reviews = await scrapeReviews(productUrl);
-          console.log(`[Scrape] Playwright scraped ${reviews.length} reviews`);
-        } catch (e) {
-          console.warn(`[Scrape] Playwright review scrape failed: ${e.message}`);
-        }
-
-        // Process via webhook handler with reviews included
-        const webhookRes = await fetch('https://aktarmatik.webtasarimi.net/api/webhook/apify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            barcodeId,
-            eventType: 'ACTOR.RUN.SUCCEEDED',
-            apifyDataArr,
-            playwrightReviews: reviews,
-          })
-        });
-        const result = await webhookRes.json();
-        console.log(`[Scrape] Webhook result for barcode ${barcodeId}:`, result);
-        return;
-      }
-
-      if (['FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) {
-        console.error(`[Scrape] Apify run ${runId} failed: ${status}`);
-        await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
-        return;
-      }
-
-      console.log(`[Scrape] Polling run ${runId}: ${status} (${i + 1}/${maxAttempts})`);
-    } catch (e) {
-      console.error(`[Scrape] Poll error: ${e.message}`);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Scraper returned ${res.status}: ${errText}`);
     }
-  }
 
-  await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+    const scrapedData = await res.json();
+    console.log(`[Scrape] Custom scraper finished for ${barcodeId}, total reviews: ${scrapedData.reviews?.length || 0}`);
+
+    // Process via webhook handler with new data structure
+    const webhookRes = await fetch(process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook/apify` : 'https://aktarmatik.webtasarimi.net/api/webhook/apify', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.N8N_SECRET_TOKEN || 'aktarmatik-n8n-secret-token-123'}`
+      },
+      body: JSON.stringify({
+        barcodeId,
+        eventType: 'ACTOR.RUN.SUCCEEDED',
+        isCustomScraper: true,
+        scrapedData
+      })
+    });
+    const result = await webhookRes.json();
+    console.log(`[Scrape] Webhook result for barcode ${barcodeId}:`, result);
+
+  } catch (e) {
+    console.error(`[Scrape] Background error: ${e.message}`);
+    await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]).catch(() => {});
+  }
 }
 
 export async function POST(request) {
@@ -92,52 +78,18 @@ export async function POST(request) {
 
     await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['scraping', barcodeId]);
 
-    const apifyToken = process.env.APIFY_API_TOKEN;
-    if (!apifyToken) {
-      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
-      return NextResponse.json({ error: 'APIFY_API_TOKEN tanımlı değil' }, { status: 500 });
-    }
+    console.log(`[Scrape] Starting custom scraper for barcode ${barcodeId}: ${productUrl}`);
 
-    console.log(`[Scrape] Starting for barcode ${barcodeId}: ${productUrl}`);
+    // Fire custom background engine (does not block the response)
+    triggerCustomScraper(barcodeId, productUrl);
 
-    // Trigger Apify for product data + QnA only (15 max)
-    const apifyRes = await fetch(
-      `https://api.apify.com/v2/acts/fatihtahta~trendyol-scraper/runs?token=${apifyToken}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startUrls: [productUrl],
-          getReviews: false,
-          getQna: true,
-          limit: MAX_QNA,
-        })
-      }
-    );
-
-    if (!apifyRes.ok) {
-      const errText = await apifyRes.text();
-      console.error(`[Scrape] Apify error: ${apifyRes.status} ${errText}`);
-      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
-      return NextResponse.json({ error: 'Apify hatası', details: errText }, { status: 500 });
-    }
-
-    const apifyData = await apifyRes.json();
-    const runId = apifyData?.data?.id;
-    console.log(`[Scrape] Apify run started: ${runId}`);
-
-    // Background: poll Apify + scrape reviews with Playwright
-    pollAndProcess(runId, barcodeId, productUrl, apifyToken).catch(e => {
-      console.error(`[Scrape] Background error: ${e.message}`);
-      query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]).catch(() => {});
-    });
-
+    // Provide immediate feedback to UI!
     return NextResponse.json({
       success: true,
-      message: 'Veri çekme başlatıldı (Apify + Playwright)',
+      message: 'Veri çekme başlatıldı (Aktarmatik Scraper)',
       status: 'scraping',
       barcodeId,
-      runId,
+      runId: `custom-scrape-${Math.random().toString(36).substring(7)}`,
     });
 
   } catch (error) {

@@ -13,7 +13,7 @@ export async function POST(request) {
     }
 
     const data = await request.json();
-    let { barcodeId, datasetId, eventType, apifyDataArr, playwrightReviews } = data;
+    let { barcodeId, datasetId, eventType, apifyDataArr, playwrightReviews, isCustomScraper, scrapedData } = data;
 
     // Handle failure events from Apify
     if (eventType && eventType !== 'ACTOR.RUN.SUCCEEDED') {
@@ -34,39 +34,71 @@ export async function POST(request) {
       }
     }
 
-    if (!barcodeId || !apifyDataArr || !Array.isArray(apifyDataArr)) {
-      return NextResponse.json({ error: 'Geçersiz webhook payload yapısı' }, { status: 400 });
+    if (!barcodeId) {
+      return NextResponse.json({ error: 'Geçersiz webhook payload yapısı (Barcode eksik)' }, { status: 400 });
     }
 
-    console.log(`[Webhook] Processing data array for barcode: ${barcodeId} with ${apifyDataArr.length} items`);
+    let safeProductName = 'Ürün', safeProductUrl = '', safeImage = '';
+    let rating = 0, reviewCount = 0, favoriteCount = 0, questionCount = 0;
+    let allReviews = [], allQuestions = [];
+    let reviewSource = '';
 
-    // Parse Apify polymorphic data structure
-    const productData = apifyDataArr.find(item => item.type === 'product');
-    const reviewsData = apifyDataArr.filter(item => item.type === 'review');
-    const questionsData = apifyDataArr.filter(item => item.type === 'qna' || item.type === 'question_answer' || item.type === 'question');
+    if (isCustomScraper && scrapedData) {
+      console.log(`[Webhook] Processing custom scraper data for barcode: ${barcodeId}`);
+      const productData = scrapedData.product;
+      
+      if (!productData) {
+         await query('UPDATE tp_barcodes SET status = $1, product_name = $2 WHERE id = $3',
+          ['error', 'SCRAPER_ERR: Product verisi bulunamadı', barcodeId]
+        );
+        return NextResponse.json({ error: 'Ürün metadata bulunamadı' }, { status: 404 });
+      }
 
-    console.log(`[Webhook] Found: product=${!!productData}, reviews=${reviewsData.length}, qna=${questionsData.length}`);
+      safeProductName = String(productData.title || 'Ürün').substring(0, 1000);
+      safeProductUrl = String(productData.url || '').substring(0, 1000);
+      safeImage = (productData.images && productData.images.length > 0) ? productData.images[0].substring(0, 2000) : '';
+      
+      rating = productData.rating || 0;
+      reviewCount = productData.reviewCount || 0;
+      favoriteCount = productData.favoriteCount || 0;
+      
+      allReviews = scrapedData.reviews || [];
+      allQuestions = scrapedData.questions || [];
+      questionCount = allQuestions.length;
+      reviewSource = 'Aktarmatik Scraper';
 
-    if (!productData) {
-       await query('UPDATE tp_barcodes SET status = $1, product_name = $2 WHERE id = $3',
-        ['error', 'APIFY_ERR: Product verisi bulunamadı', barcodeId]
-      );
-      return NextResponse.json({ error: 'Ürün metadata bulunamadı' }, { status: 404 });
+    } else {
+      // Legacy Apify logic fallback
+      if (!apifyDataArr || !Array.isArray(apifyDataArr)) {
+        return NextResponse.json({ error: 'Geçersiz apify veri dizisi' }, { status: 400 });
+      }
+      console.log(`[Webhook] Processing APify data array for barcode: ${barcodeId} with ${apifyDataArr.length} items`);
+
+      const productData = apifyDataArr.find(item => item.type === 'product');
+      const reviewsData = apifyDataArr.filter(item => item.type === 'review');
+      allQuestions = apifyDataArr.filter(item => item.type === 'qna' || item.type === 'question_answer' || item.type === 'question');
+
+      if (!productData) {
+         await query('UPDATE tp_barcodes SET status = $1, product_name = $2 WHERE id = $3',
+          ['error', 'APIFY_ERR: Product verisi bulunamadı', barcodeId]
+        );
+        return NextResponse.json({ error: 'Ürün metadata bulunamadı' }, { status: 404 });
+      }
+
+      safeProductName = String(productData.product_title || 'Ürün').substring(0, 1000);
+      safeProductUrl = String(productData.url || '').substring(0, 1000);
+      if (productData.media_and_content?.images && productData.media_and_content.images.length > 0) {
+         safeImage = productData.media_and_content.images[0].substring(0, 2000);
+      }
+
+      rating = productData.pricing_and_availability?.rating_score?.average_rating || 0;
+      reviewCount = productData.pricing_and_availability?.rating_score?.comment_count || 0;
+      favoriteCount = productData.social_and_engagement?.favorite_count || productData.ux_layout_properties?.favorite_count || 0;
+      questionCount = allQuestions.length;
+
+      allReviews = (playwrightReviews && playwrightReviews.length > 0) ? playwrightReviews : reviewsData;
+      reviewSource = (playwrightReviews && playwrightReviews.length > 0) ? 'Playwright' : 'Apify';
     }
-
-    // Safely extract product fields
-    const safeProductName = String(productData.product_title || 'Ürün').substring(0, 1000);
-    const safeProductUrl = String(productData.url || '').substring(0, 1000);
-    let safeImage = '';
-    if (productData.media_and_content?.images && productData.media_and_content.images.length > 0) {
-       safeImage = productData.media_and_content.images[0].substring(0, 2000);
-    }
-
-    // Extract fields from Apify Actor JSON - try multiple paths
-    const rating = productData.pricing_and_availability?.rating_score?.average_rating || 0;
-    const reviewCount = productData.pricing_and_availability?.rating_score?.comment_count || 0;
-    const favoriteCount = productData.social_and_engagement?.favorite_count || productData.ux_layout_properties?.favorite_count || 0;
-    const questionCount = questionsData.length;
 
     // Update main product data
     await query(
@@ -92,11 +124,6 @@ export async function POST(request) {
       [barcodeId, rating, reviewCount, questionCount, favoriteCount]
     );
 
-    // Insert reviews - prefer Playwright reviews, fallback to Apify reviews
-    const allReviews = (playwrightReviews && playwrightReviews.length > 0)
-      ? playwrightReviews
-      : reviewsData;
-    const reviewSource = (playwrightReviews && playwrightReviews.length > 0) ? 'Playwright' : 'Apify';
 
     if (allReviews.length > 0) {
       await query('DELETE FROM tp_reviews WHERE barcode_id = $1', [barcodeId]);
@@ -129,10 +156,10 @@ export async function POST(request) {
     }
 
     // Insert questions
-    if (questionsData.length > 0) {
+    if (allQuestions.length > 0) {
       await query('DELETE FROM tp_questions WHERE barcode_id = $1', [barcodeId]);
 
-      for (const q of questionsData) {
+      for (const q of allQuestions) {
         const safeUser = String(q.user_name || q.userName || q.user_full_name || 'Müşteri').substring(0, 250);
         const qText = String(q.question_text || q.text || q.question || '').substring(0, 2000);
         let aText = '';
