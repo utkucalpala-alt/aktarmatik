@@ -29,6 +29,18 @@ export default function BarkodlarPage() {
 
   useEffect(() => { loadBarcodes(); }, []);
 
+  // Auto-refresh when any barcode is in 'scraping' status
+  useEffect(() => {
+    const hasScrapingBarcode = barcodes.some(b => b.status === 'scraping');
+    if (!hasScrapingBarcode) return;
+
+    const interval = setInterval(() => {
+      loadBarcodes();
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [barcodes]);
+
   async function handleAdd(e) {
     e.preventDefault();
     setAddError('');
