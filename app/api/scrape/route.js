@@ -97,6 +97,3 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Sunucu hatası', details: error.message }, { status: 500 });
   }
 }
- 500 });
-  }
-}
