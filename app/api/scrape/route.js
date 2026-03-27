@@ -1,7 +1,63 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getUserFromRequest } from '@/lib/auth';
-import { scrapeTrendyolProduct, generateMockAnalysis } from '@/lib/scraper';
+
+// Poll Apify run status and process results when done
+async function pollAndProcess(runId, barcodeId, apifyToken) {
+  const maxAttempts = 60; // 5 minutes max (60 * 5s)
+  const pollInterval = 5000;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+    try {
+      const statusRes = await fetch(
+        `https://api.apify.com/v2/actor-runs/${runId}?token=${apifyToken}`
+      );
+      const statusData = await statusRes.json();
+      const status = statusData?.data?.status;
+
+      if (status === 'SUCCEEDED') {
+        const datasetId = statusData?.data?.defaultDatasetId;
+        console.log(`[Apify Poll] Run ${runId} succeeded. Dataset: ${datasetId}`);
+
+        // Fetch dataset items
+        const dataRes = await fetch(
+          `https://api.apify.com/v2/datasets/${datasetId}/items?token=${apifyToken}`
+        );
+        const apifyDataArr = await dataRes.json();
+
+        // Call our own webhook handler with the data
+        const webhookRes = await fetch('https://aktarmatik.webtasarimi.net/api/webhook/apify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            barcodeId,
+            datasetId,
+            eventType: 'ACTOR.RUN.SUCCEEDED',
+            apifyDataArr
+          })
+        });
+        const result = await webhookRes.json();
+        console.log(`[Apify Poll] Webhook processed for barcode ${barcodeId}:`, result);
+        return;
+      }
+
+      if (['FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) {
+        console.error(`[Apify Poll] Run ${runId} ended with status: ${status}`);
+        await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+        return;
+      }
+
+      console.log(`[Apify Poll] Run ${runId} status: ${status} (attempt ${i + 1}/${maxAttempts})`);
+    } catch (e) {
+      console.error(`[Apify Poll] Error checking run ${runId}:`, e.message);
+    }
+  }
+
+  console.error(`[Apify Poll] Run ${runId} timed out after ${maxAttempts} attempts`);
+  await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+}
 
 // POST /api/scrape - trigger scraping for a barcode
 export async function POST(request) {
@@ -16,7 +72,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Barkod ID gerekli' }, { status: 400 });
     }
 
-    // Get barcode
     const barcodeResult = await query(
       'SELECT * FROM tp_barcodes WHERE id = $1 AND user_id = $2',
       [barcodeId, user.id]
@@ -28,64 +83,64 @@ export async function POST(request) {
     const barcode = barcodeResult.rows[0];
     let productUrl = barcode.product_url;
 
-    // If no URL, use search to find the product
     if (!productUrl) {
       productUrl = `https://www.trendyol.com/sr?q=${barcode.barcode}`;
     }
 
-    // Update status
     await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['scraping', barcodeId]);
 
-    // Native Apify API Integration
     const apifyToken = process.env.APIFY_API_TOKEN;
     if (!apifyToken) {
-      console.warn('[Scrape] APIFY_API_TOKEN is missing in ENV. You must configure this in Dokploy.');
+      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+      return NextResponse.json({ error: 'APIFY_API_TOKEN tanımlı değil' }, { status: 500 });
     }
-    
-    console.log(`[Native Apify] Triggering Apify Actor for barcode: ${barcodeId} -> ${productUrl}`);
-    
-    // Create an ad-hoc webhook for this specific run that tells Apify to callback our server
-    const webhooksArr = [{
-      eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED", "ACTOR.RUN.ABORTED", "ACTOR.RUN.TIMED_OUT"],
-      requestUrl: "https://aktarmatik.webtasarimi.net/api/webhook/apify",
-      payloadTemplate: `{"barcodeId": "${barcodeId}", "datasetId": "{{resource.defaultDatasetId}}", "eventType": "{{eventType}}"}`
-    }];
-    const webhooksB64 = Buffer.from(JSON.stringify(webhooksArr)).toString('base64');
-    
-    const apifyEndpoint = `https://api.apify.com/v2/acts/fatihtahta~trendyol-scraper/runs?token=${apifyToken}&webhooks=${webhooksB64}`;
 
-    // Wait for Apify trigger confirmation to handle initial API rejection
+    console.log(`[Native Apify] Triggering for barcode: ${barcodeId} -> ${productUrl}`);
+
+    const apifyEndpoint = `https://api.apify.com/v2/acts/fatihtahta~trendyol-scraper/runs?token=${apifyToken}`;
+
+    // Use exact input format from Apify documentation
     const apifyRes = await fetch(apifyEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         startUrls: [productUrl],
         getReviews: true,
         getQna: true,
         limit: 100
       })
     });
-    
+
     if (!apifyRes.ok) {
       const errText = await apifyRes.text();
       console.error(`[Apify Trigger Error] Status: ${apifyRes.status}, Body: ${errText}`);
       await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
-      return NextResponse.json({ error: 'Apify tetiklenirken hata oluştu veya bakiye bitti.', details: errText }, { status: 500 });
+      return NextResponse.json({ error: 'Apify tetiklenirken hata oluştu.', details: errText }, { status: 500 });
     }
 
     const apifyData = await apifyRes.json();
-    console.log(`[Native Apify] Run started with ID: ${apifyData?.data?.id}. Waiting for webhook callback.`);
+    const runId = apifyData?.data?.id;
+    console.log(`[Native Apify] Run started: ${runId}. Polling in background.`);
 
-    // Return immediately so the UI doesn't hang
-    return NextResponse.json({ 
-      success: true, 
-      message: 'İşlem başarıyla Apify kuyruğuna alındı', 
+    // Start polling in background
+    pollAndProcess(runId, barcodeId, apifyToken).catch(e => {
+      console.error(`[Apify Poll] Unhandled error for barcode ${barcodeId}:`, e.message);
+      query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]).catch(() => {});
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Apify işlemi başlatıldı, veriler otomatik gelecek',
       status: 'scraping',
-      barcodeId: barcodeId
+      barcodeId,
+      runId
     });
 
   } catch (error) {
     console.error('API endpoint error:', error);
     return NextResponse.json({ error: 'Sunucu hatası', details: error.message }, { status: 500 });
+  }
+}
+ 500 });
   }
 }
