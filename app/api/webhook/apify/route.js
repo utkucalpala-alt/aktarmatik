@@ -1,30 +1,19 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-// POST /api/webhook/apify - Receive Apify results from n8n
+// POST /api/webhook/apify - Receive Apify results from scrape route
 export async function POST(request) {
   try {
-    // Basic security token check (you should set this in n8n and Dokploy)
+    // Basic security token check
     const token = request.headers.get('Authorization') || request.headers.get('authorization');
     const expectedToken = process.env.N8N_SECRET_TOKEN || 'aktarmatik-n8n-secret-token-123';
-    
-    // In production, enforce tokens. For now we accept if no token mapped in env.
+
     if (process.env.N8N_SECRET_TOKEN && token !== `Bearer ${expectedToken}`) {
       return NextResponse.json({ error: 'Unauthorized webhook request' }, { status: 401 });
     }
 
     const data = await request.json();
-    let { barcodeId, datasetId, eventType, apifyDataArr } = data;
-<<<<<<< HEAD
-
-    // Handle failure events from Apify
-    if (eventType && eventType !== 'ACTOR.RUN.SUCCEEDED') {
-      console.log(`[Webhook] Apify run failed or aborted for barcode ${barcodeId}. Event: ${eventType}`);
-      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
-      return NextResponse.json({ success: false, message: `Run failed: ${eventType}` });
-    }
-=======
->>>>>>> ec7b0e8c03488487ef2b386d6ced4d7600059689
+    let { barcodeId, datasetId, eventType, apifyDataArr, playwrightReviews } = data;
 
     // Handle failure events from Apify
     if (eventType && eventType !== 'ACTOR.RUN.SUCCEEDED') {
@@ -59,7 +48,7 @@ export async function POST(request) {
     console.log(`[Webhook] Found: product=${!!productData}, reviews=${reviewsData.length}, qna=${questionsData.length}`);
 
     if (!productData) {
-       await query('UPDATE tp_barcodes SET status = $1, product_name = $2 WHERE id = $3', 
+       await query('UPDATE tp_barcodes SET status = $1, product_name = $2 WHERE id = $3',
         ['error', 'APIFY_ERR: Product verisi bulunamadı', barcodeId]
       );
       return NextResponse.json({ error: 'Ürün metadata bulunamadı' }, { status: 404 });
@@ -72,19 +61,19 @@ export async function POST(request) {
     if (productData.media_and_content?.images && productData.media_and_content.images.length > 0) {
        safeImage = productData.media_and_content.images[0].substring(0, 2000);
     }
-    
+
     // Extract fields from Apify Actor JSON - try multiple paths
     const rating = productData.pricing_and_availability?.rating_score?.average_rating || 0;
     const reviewCount = productData.pricing_and_availability?.rating_score?.comment_count || 0;
     const favoriteCount = productData.social_and_engagement?.favorite_count || productData.ux_layout_properties?.favorite_count || 0;
     const questionCount = questionsData.length;
-    
+
     // Update main product data
     await query(
-      `UPDATE tp_barcodes 
-       SET product_name = $1, 
-           product_url = $2, 
-           product_image = $3, 
+      `UPDATE tp_barcodes
+       SET product_name = $1,
+           product_url = $2,
+           product_image = $3,
            status = 'active',
            last_scraped_at = NOW()
        WHERE id = $4`,
@@ -103,24 +92,39 @@ export async function POST(request) {
       [barcodeId, rating, reviewCount, questionCount, favoriteCount]
     );
 
-    // Insert reviews
-    if (reviewsData.length > 0) {
-      await query('DELETE FROM tp_reviews WHERE barcode_id = $1', [barcodeId]);
+    // Insert reviews - prefer Playwright reviews, fallback to Apify reviews
+    const allReviews = (playwrightReviews && playwrightReviews.length > 0)
+      ? playwrightReviews
+      : reviewsData;
+    const reviewSource = (playwrightReviews && playwrightReviews.length > 0) ? 'Playwright' : 'Apify';
 
-      for (const review of reviewsData) {
-        const safeAuthor = String(review.user_full_name || review.user_name || review.userName || 'Anonim').substring(0, 250);
+    if (allReviews.length > 0) {
+      await query('DELETE FROM tp_reviews WHERE barcode_id = $1', [barcodeId]);
+      console.log(`[Webhook] Saving ${allReviews.length} reviews from ${reviewSource}`);
+
+      for (const review of allReviews) {
+        const safeAuthor = String(review.author || review.user_full_name || review.user_name || review.userName || 'Anonim').substring(0, 250);
         let safeDate = '';
-        const reviewRawDate = review.created_at || review.creation_date || review.date;
+        const reviewRawDate = review.date || review.created_at || review.creation_date;
         if (reviewRawDate) {
           const ts = Number(reviewRawDate);
-          safeDate = ts > 1e12 ? new Date(ts).toLocaleDateString('tr-TR') : new Date(reviewRawDate).toLocaleDateString('tr-TR');
+          if (ts > 1e12) {
+            safeDate = new Date(ts).toLocaleDateString('tr-TR');
+          } else if (!isNaN(Date.parse(reviewRawDate))) {
+            safeDate = new Date(reviewRawDate).toLocaleDateString('tr-TR');
+          } else {
+            safeDate = String(reviewRawDate).substring(0, 50);
+          }
         }
-        const reviewContent = String(review.comment || review.review_text || review.text || review.content || '').substring(0, 2000);
+        const reviewContent = String(review.content || review.comment || review.review_text || review.text || '').substring(0, 2000);
+        const reviewRating = review.rating || review.rate || 5;
 
-        await query(
-          'INSERT INTO tp_reviews (barcode_id, author, rating, content, review_date) VALUES ($1, $2, $3, $4, $5)',
-          [barcodeId, safeAuthor, review.rating || review.rate || 5, reviewContent, safeDate]
-        );
+        if (reviewContent.length > 5) {
+          await query(
+            'INSERT INTO tp_reviews (barcode_id, author, rating, content, review_date) VALUES ($1, $2, $3, $4, $5)',
+            [barcodeId, safeAuthor, reviewRating, reviewContent, safeDate]
+          );
+        }
       }
     }
 
@@ -140,7 +144,6 @@ export async function POST(request) {
         let qDate = '';
         const rawDate = q.creation_date || q.creationDate || q.created_at || q.date;
         if (rawDate) {
-          // Handle both ISO date and Unix timestamp (ms)
           const ts = Number(rawDate);
           qDate = ts > 1e12 ? new Date(ts).toLocaleDateString('tr-TR') : new Date(rawDate).toLocaleDateString('tr-TR');
         }
@@ -154,12 +157,12 @@ export async function POST(request) {
       }
     }
 
-    // We can run our local Mock/LLM analysis based on the freshly inserted reviews
+    // Run analysis based on the freshly inserted reviews
     try {
-       const mappedReviews = reviewsData.slice(0, 30).map(r => ({ author: r.user_full_name, rating: r.rating, content: r.comment, date: r.created_at }));
+       const mappedReviews = allReviews.slice(0, 30).map(r => ({ author: r.author || r.user_full_name, rating: r.rating || r.rate, content: r.content || r.comment, date: r.date || r.created_at }));
        const { generateMockAnalysis } = await import('@/lib/scraper');
        const analysis = generateMockAnalysis(safeProductName, rating, mappedReviews);
-       
+
        await query('DELETE FROM tp_ai_analysis WHERE barcode_id = $1', [barcodeId]);
        await query(
          'INSERT INTO tp_ai_analysis (barcode_id, summary, sentiment, pros, cons, keywords) VALUES ($1, $2, $3, $4, $5, $6)',
