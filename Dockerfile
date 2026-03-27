@@ -9,7 +9,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # --- Production stage: Apify Playwright Chrome (Chromium pre-installed, OOM-safe) ---
-FROM apify/actor-node-playwright-chrome:30 AS runner
+FROM apify/actor-node-playwright-chrome:20 AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
