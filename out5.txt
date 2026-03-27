@@ -1,0 +1,9 @@
+{
+  "status": 401,
+  "body": {
+    "error": {
+      "type": "token-not-provided",
+      "message": "Authentication token was not provided"
+    }
+  }
+}

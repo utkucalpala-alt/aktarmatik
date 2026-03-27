@@ -14,7 +14,14 @@ export async function POST(request) {
     }
 
     const data = await request.json();
-    let { barcodeId, datasetId, apifyDataArr } = data;
+    let { barcodeId, datasetId, eventType, apifyDataArr } = data;
+
+    // Handle failure events from Apify
+    if (eventType && eventType !== 'ACTOR.RUN.SUCCEEDED') {
+      console.log(`[Webhook] Apify run failed or aborted for barcode ${barcodeId}. Event: ${eventType}`);
+      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+      return NextResponse.json({ success: false, message: `Run failed: ${eventType}` });
+    }
 
     if (datasetId) {
       console.log(`[Webhook] Native Apify trigger received. Fetching dataset ${datasetId} for barcode: ${barcodeId}`);

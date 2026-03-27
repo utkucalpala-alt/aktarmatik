@@ -46,32 +46,40 @@ export async function POST(request) {
     
     // Create an ad-hoc webhook for this specific run that tells Apify to callback our server
     const webhooksArr = [{
-      eventTypes: ["ACTOR.RUN.SUCCEEDED"],
+      eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED", "ACTOR.RUN.ABORTED", "ACTOR.RUN.TIMED_OUT"],
       requestUrl: "https://aktarmatik.webtasarimi.net/api/webhook/apify",
-      payloadTemplate: `{"barcodeId": "${barcodeId}", "datasetId": "{{resource.defaultDatasetId}}"}`
+      payloadTemplate: `{"barcodeId": "${barcodeId}", "datasetId": "{{resource.defaultDatasetId}}", "eventType": "{{eventType}}"}`
     }];
     const webhooksB64 = Buffer.from(JSON.stringify(webhooksArr)).toString('base64');
     
-    const apifyEndpoint = `https://api.apify.com/v2/acts/AoPP8ru9uKws5t80G/runs?token=${apifyToken}&webhooks=${webhooksB64}`;
+    const apifyEndpoint = `https://api.apify.com/v2/acts/fatihtahta~trendyol-scraper/runs?token=${apifyToken}&webhooks=${webhooksB64}`;
 
-    // Fire and forget to Apify
-    fetch(apifyEndpoint, {
+    // Wait for Apify trigger confirmation to handle initial API rejection
+    const apifyRes = await fetch(apifyEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        startUrls: [{ url: productUrl }],
-        maxReviews: 25,
-        maxQuestions: 25,
-        proxyConfiguration: { useApifyProxy: true }
+        startUrls: [productUrl],
+        getReviews: true,
+        getQna: true,
+        limit: 100
       })
-    }).then(res => res.json()).then(data => {
-      console.log(`[Native Apify] Run started with ID:`, data?.data?.id);
-    }).catch(e => console.error('[Apify Trigger Error]', e));
+    });
+    
+    if (!apifyRes.ok) {
+      const errText = await apifyRes.text();
+      console.error(`[Apify Trigger Error] Status: ${apifyRes.status}, Body: ${errText}`);
+      await query('UPDATE tp_barcodes SET status = $1 WHERE id = $2', ['error', barcodeId]);
+      return NextResponse.json({ error: 'Apify tetiklenirken hata oluştu veya bakiye bitti.', details: errText }, { status: 500 });
+    }
+
+    const apifyData = await apifyRes.json();
+    console.log(`[Native Apify] Run started with ID: ${apifyData?.data?.id}. Waiting for webhook callback.`);
 
     // Return immediately so the UI doesn't hang
     return NextResponse.json({ 
       success: true, 
-      message: 'İşlem n8n + Apify kuyruğuna alındı', 
+      message: 'İşlem başarıyla Apify kuyruğuna alındı', 
       status: 'scraping',
       barcodeId: barcodeId
     });
