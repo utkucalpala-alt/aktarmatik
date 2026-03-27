@@ -27,7 +27,9 @@ async function triggerCustomScraper(barcodeId, productUrl) {
       throw new Error(`Scraper returned ${res.status}: ${errText}`);
     }
 
-    const scrapedData = await res.json();
+    const scraperResponse = await res.json();
+    // Server returns { success: true, data: { product, reviews, questions } }
+    const scrapedData = scraperResponse.data || scraperResponse;
     console.log(`[Scrape] Custom scraper finished for ${barcodeId}, total reviews: ${scrapedData.reviews?.length || 0}`);
 
     // Process via webhook handler with new data structure
