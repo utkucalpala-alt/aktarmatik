@@ -39,7 +39,7 @@ export async function POST(request) {
     }
 
     let safeProductName = 'Ürün', safeProductUrl = '', safeImage = '';
-    let rating = 0, reviewCount = 0, favoriteCount = 0, questionCount = 0;
+    let rating = 0, reviewCount = 0, favoriteCount = 0, questionCount = 0, cartCount = 0, soldCount = 0;
     let allReviews = [], allQuestions = [];
     let reviewSource = '';
 
@@ -61,10 +61,16 @@ export async function POST(request) {
       rating = productData.rating || 0;
       reviewCount = productData.reviewCount || 0;
       favoriteCount = productData.favoriteCount || 0;
-      
+      cartCount = productData.cartCount || 0;
+      soldCount = productData.soldCount || 0;
+      questionCount = productData.questionCount || 0;
+
       allReviews = scrapedData.reviews || [];
       allQuestions = scrapedData.questions || [];
-      questionCount = allQuestions.length;
+      // Use total questionCount from product page, fallback to scraped count
+      if (!questionCount) questionCount = allQuestions.length;
+      // Use total reviewCount from product page, fallback to scraped count
+      if (!reviewCount) reviewCount = allReviews.length;
       reviewSource = 'Aktarmatik Scraper';
 
     } else {
@@ -94,6 +100,8 @@ export async function POST(request) {
       rating = productData.pricing_and_availability?.rating_score?.average_rating || 0;
       reviewCount = productData.pricing_and_availability?.rating_score?.comment_count || 0;
       favoriteCount = productData.social_and_engagement?.favorite_count || productData.ux_layout_properties?.favorite_count || 0;
+      cartCount = productData.social_and_engagement?.basket_count || productData.ux_layout_properties?.basket_count || 0;
+      soldCount = productData.social_and_engagement?.order_count || productData.ux_layout_properties?.order_count || 0;
       questionCount = allQuestions.length;
 
       allReviews = (playwrightReviews && playwrightReviews.length > 0) ? playwrightReviews : reviewsData;
@@ -119,9 +127,9 @@ export async function POST(request) {
 
     // Insert into product data history
     await query(
-      `INSERT INTO tp_product_data (barcode_id, rating, review_count, question_count, favorite_count)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [barcodeId, rating, reviewCount, questionCount, favoriteCount]
+      `INSERT INTO tp_product_data (barcode_id, rating, review_count, question_count, favorite_count, cart_count, sold_count)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [barcodeId, rating, reviewCount, questionCount, favoriteCount, cartCount, soldCount]
     );
 
 
