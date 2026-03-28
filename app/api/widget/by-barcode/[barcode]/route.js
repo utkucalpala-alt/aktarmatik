@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
     const { barcode } = await params;
 
     // Find barcode record
-    const barcodeResult = await query(
+    let barcodeResult = await query(
       'SELECT * FROM tp_barcodes WHERE barcode = $1 LIMIT 1',
       [barcode]
     );
