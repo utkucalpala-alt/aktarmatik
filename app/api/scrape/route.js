@@ -8,7 +8,7 @@ const MAX_REVIEWS = 15;
 // Call our custom Dokploy scraper and forward data to webhook
 async function triggerCustomScraper(barcodeId, productUrl) {
   try {
-    const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:4000/scrape';
+    const scraperUrl = process.env.SCRAPER_URL || 'http://aktarmatik-aktarmatikscraper-zdkiey:4001/scrape';
     const scraperSecret = process.env.SCRAPER_SECRET || 'aktarmatik-scraper-secret';
     
     console.log(`[Scrape] Calling custom scraper for barcode ${barcodeId} at ${scraperUrl}`);

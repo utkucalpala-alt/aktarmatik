@@ -161,10 +161,9 @@ export async function POST(request) {
 
       for (const q of allQuestions) {
         const safeUser = String(q.user_name || q.userName || q.user_full_name || 'Müşteri').substring(0, 250);
-        const qText = String(q.question_text || q.questionText || q.text || q.question || '').substring(0, 2000);
+        const qText = String(q.question_text || q.text || q.question || '').substring(0, 2000);
         let aText = '';
-        if (q.answerText) aText = q.answerText;
-        else if (q.answer_text) aText = q.answer_text;
+        if (q.answer_text) aText = q.answer_text;
         else if (typeof q.answer === 'object' && q.answer?.text) aText = q.answer.text;
         else if (typeof q.answer === 'string') aText = q.answer;
         aText = String(aText).substring(0, 2000);
