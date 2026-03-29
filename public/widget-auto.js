@@ -458,11 +458,9 @@
       socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(parseInt(d.review_count) * 20) + ' kisi goruntuledi!</span>');
     }
     if (socialMessages.length > 0) {
-      html += '<div class="ak-fav-row ak-rotating" data-msg-count="' + socialMessages.length + '">';
+      html += '<div class="ak-fav-row ak-rotating">';
       html += socialMessages[0];
       html += '</div>';
-      // Store messages for rotation (will be attached after render)
-      container._socialMessages = socialMessages;
     }
 
     // ── AI Summary ──
@@ -561,18 +559,19 @@
     }
 
     // Rotating social proof messages
-    var rotatingEl = container.querySelector('.ak-rotating');
-    if (rotatingEl && container._socialMessages && container._socialMessages.length > 1) {
-      var msgs = container._socialMessages;
-      var idx = 0;
-      setInterval(function() {
-        rotatingEl.classList.add('ak-fade');
-        setTimeout(function() {
-          idx = (idx + 1) % msgs.length;
-          rotatingEl.innerHTML = msgs[idx];
-          rotatingEl.classList.remove('ak-fade');
-        }, 400);
-      }, 3500);
+    if (socialMessages.length > 1) {
+      (function(el, msgs) {
+        var idx = 0;
+        setInterval(function() {
+          if (!el || !document.contains(el)) return;
+          el.classList.add('ak-fade');
+          setTimeout(function() {
+            idx = (idx + 1) % msgs.length;
+            el.innerHTML = msgs[idx];
+            el.classList.remove('ak-fade');
+          }, 400);
+        }, 3500);
+      })(container.querySelector('.ak-rotating'), socialMessages);
     }
   }
 
