@@ -35,7 +35,7 @@
 
   function injectStyles() {
     if (document.getElementById('aktarmatik-widget-styles')) return;
-    var C = '#' + CONTAINER_ID;
+    var C = '.aktarmatik-container';
     var css = [
       C + ' * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }',
       C + ' .ak-w { padding: 16px 0; color: ' + colors.text + '; width: 100%; border-top: 1px solid ' + colors.border + '; margin-top: 12px; }',
@@ -340,11 +340,13 @@
     // Top container: rating + social proof (after price)
     var topContainer = document.createElement('div');
     topContainer.id = CONTAINER_ID;
+    topContainer.className = 'aktarmatik-container';
     topContainer.innerHTML = '<div class="ak-w"><div class="ak-loading">Trendyol verileri yukleniyor...</div></div>';
 
     // Bottom container: AI summary + reviews + QA (after buy buttons)
     var bottomContainer = document.createElement('div');
     bottomContainer.id = CONTAINER_BOTTOM_ID;
+    bottomContainer.className = 'aktarmatik-container';
 
     var point = findInsertionPoint();
 
