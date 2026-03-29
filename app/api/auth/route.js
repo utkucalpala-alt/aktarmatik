@@ -24,13 +24,18 @@ export async function POST(request) {
       }
 
       const passwordHash = await bcrypt.hash(password, 10);
+      // Admin email gets special treatment
+      const isAdmin = email === 'morfilmedia@gmail.com';
+      const userRole = isAdmin ? 'admin' : 'user';
+      const userPlan = isAdmin ? 'unlimited' : 'free';
+
       const result = await query(
-        'INSERT INTO tp_users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name, plan',
-        [email, passwordHash, name || '']
+        'INSERT INTO tp_users (email, password_hash, name, role, plan) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, name, plan, role',
+        [email, passwordHash, name || '', userRole, userPlan]
       );
 
       const user = result.rows[0];
-      const token = signToken({ id: user.id, email: user.email });
+      const token = signToken({ id: user.id, email: user.email, role: user.role });
 
       const response = NextResponse.json({ user, token });
       response.cookies.set('tp_token', token, {
@@ -45,7 +50,7 @@ export async function POST(request) {
     }
 
     // Login
-    const result = await query('SELECT id, email, name, plan, password_hash FROM tp_users WHERE email = $1', [email]);
+    const result = await query('SELECT id, email, name, plan, role, password_hash FROM tp_users WHERE email = $1', [email]);
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'E-posta veya şifre hatalı' }, { status: 401 });
     }
@@ -56,7 +61,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'E-posta veya şifre hatalı' }, { status: 401 });
     }
 
-    const token = signToken({ id: user.id, email: user.email });
+    const token = signToken({ id: user.id, email: user.email, role: user.role || 'user' });
     const { password_hash, ...safeUser } = user;
 
     const response = NextResponse.json({ user: safeUser, token });
@@ -84,7 +89,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 });
     }
 
-    const result = await query('SELECT id, email, name, plan, created_at FROM tp_users WHERE id = $1', [payload.id]);
+    const result = await query('SELECT id, email, name, plan, role, created_at FROM tp_users WHERE id = $1', [payload.id]);
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
     }
