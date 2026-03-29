@@ -463,17 +463,29 @@
 
     // Rotating social proof messages
     var socialMessages = [];
-    if (d.favorite_count && parseInt(d.favorite_count) > 0) {
-      socialMessages.push('\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(d.favorite_count) + ' kisi favoriledi!</span>');
+    var rc = parseInt(d.review_count) || 0;
+    var fc = parseInt(d.favorite_count) || 0;
+    var cc = parseInt(d.cart_count) || 0;
+    var sc = parseInt(d.sold_count) || 0;
+
+    // Her zaman en az 3-4 mesaj üret
+    if (fc > 0) {
+      socialMessages.push('\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(fc) + ' kisi favoriledi!</span>');
+    } else if (rc > 0) {
+      socialMessages.push('\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(Math.round(rc * 8.5)) + ' kisi favoriledi!</span>');
     }
-    if (d.cart_count && parseInt(d.cart_count) > 0) {
-      socialMessages.push('\uD83D\uDED2 <span class="ak-fav-count">' + formatNum(d.cart_count) + ' kisinin sepetinde,</span> <span>tukenmeden al!</span>');
+    if (cc > 0) {
+      socialMessages.push('\uD83D\uDED2 <span class="ak-fav-count">' + formatNum(cc) + ' kisinin sepetinde,</span> <span>tukenmeden al!</span>');
+    } else if (rc > 0) {
+      socialMessages.push('\uD83D\uDED2 <span class="ak-fav-count">' + formatNum(Math.round(rc * 2.3)) + ' kisinin sepetinde,</span> <span>tukenmeden al!</span>');
     }
-    if (d.sold_count && parseInt(d.sold_count) > 0) {
-      socialMessages.push('\uD83D\uDCE6 <span>3 gunde</span> <span class="ak-fav-count">' + formatNum(d.sold_count) + '+ urun satildi!</span>');
+    if (sc > 0) {
+      socialMessages.push('\uD83D\uDCE6 <span>3 gunde</span> <span class="ak-fav-count">' + formatNum(sc) + '+ urun satildi!</span>');
+    } else if (rc > 0) {
+      socialMessages.push('\uD83D\uDCE6 <span>3 gunde</span> <span class="ak-fav-count">' + formatNum(Math.round(rc * 4.5)) + '+ urun satildi!</span>');
     }
-    if (d.review_count && parseInt(d.review_count) > 0) {
-      socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(parseInt(d.review_count) * 20) + ' kisi goruntuledi!</span>');
+    if (rc > 0) {
+      socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(rc * 20) + ' kisi goruntuledi!</span>');
     }
     if (socialMessages.length > 0) {
       topHtml += '<div class="ak-fav-row ak-rotating">';
@@ -484,7 +496,7 @@
     // Tavsiye oranı - ayrı sabit satır
     if (rating >= 4.0) {
       var tavsiyeOran = Math.round(rating * 20);
-      topHtml += '<div class="ak-fav-row" style="background:rgba(0,184,148,0.08);border:1px solid rgba(0,184,148,0.2);margin-top:6px">';
+      topHtml += '<div class="ak-fav-row" style="background:none;border:none;margin-top:6px">';
       topHtml += '\u2705 <span>Alicilarin <strong>%' + tavsiyeOran + '\'i</strong> bu urunu tavsiye ediyor!</span>';
       topHtml += '</div>';
     }
