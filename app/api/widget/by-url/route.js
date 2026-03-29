@@ -19,12 +19,16 @@ export async function GET(request) {
 
     // Normalize: strip protocol and trailing slash for flexible matching
     const normalized = siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').replace(/\?.*$/, '');
+    console.log('[by-url] Searching for:', normalized);
 
-    // Search by site_url (partial match on path)
+    // Search by site_url (partial match)
     const barcodeResult = await query(
-      "SELECT * FROM tp_barcodes WHERE site_url IS NOT NULL AND REPLACE(REPLACE(site_url, 'https://', ''), 'http://', '') LIKE $1 LIMIT 1",
-      [`%${normalized}%`]
+      `SELECT * FROM tp_barcodes WHERE site_url IS NOT NULL AND (
+        site_url ILIKE $1 OR site_url ILIKE $2 OR site_url ILIKE $3
+      ) LIMIT 1`,
+      [`%${normalized}%`, `%${normalized}/%`, `https://${normalized}`]
     );
+    console.log('[by-url] Found rows:', barcodeResult.rows.length);
 
     if (barcodeResult.rows.length === 0) {
       return NextResponse.json({ error: 'Eşleşen ürün bulunamadı' }, { status: 404, headers: corsHeaders });
