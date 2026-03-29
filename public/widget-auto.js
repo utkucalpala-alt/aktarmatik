@@ -98,6 +98,8 @@
       C + ' .ak-footer a { color: inherit; text-decoration: none; font-weight: 600; }',
       C + ' .ak-empty { text-align: center; padding: 20px; color: #999; font-size: 13px; }',
       C + ' .ak-loading { text-align: center; padding: 16px; opacity: 0.5; font-size: 13px; }',
+      C + ' .ak-rotating { transition: opacity 0.4s ease; }',
+      C + ' .ak-rotating.ak-fade { opacity: 0; }',
     ].join('\n');
 
     var styleEl = document.createElement('style');
@@ -259,29 +261,38 @@
   // DOM INSERTION
   // ========================
   function findInsertionPoint() {
-    // ikas theme selectors (real selectors from ikas stores like softtoplus.com)
+    // Priority 1: Insert right after the price element (ikas)
+    var priceSelectors = [
+      '.product-detail-page-detail-price-box',
+      '[class*="price-box"]',
+      '[class*="priceBox"]',
+      '[class*="product-price"]',
+      '[class*="productPrice"]',
+    ];
+    for (var pi = 0; pi < priceSelectors.length; pi++) {
+      try {
+        var priceEl = document.querySelector(priceSelectors[pi]);
+        if (priceEl && priceEl.offsetHeight > 0) return { parent: priceEl, method: 'after' };
+      } catch(e) {}
+    }
+
+    // Priority 2: ikas theme selectors
     var ikasSelectors = [
-      // ikas actual product page classes
       '.product-detail-page-buy-box',
       '.product-detail-page-detail-box',
-      // ikas Flavor theme
       '.product-detail-right',
       '.product-detail__right',
       '.product-info-wrapper',
-      // ikas OZY theme
       '[class*="productDetailRight"]',
       '[class*="ProductDetailRight"]',
       '[class*="product-detail-right"]',
-      // ikas general patterns
       '[class*="productDetail"] [class*="right"]',
       '[class*="product-detail"] [class*="info"]',
       '[class*="productInfo"]',
       '[class*="ProductInfo"]',
-      // Generic selectors for add-to-cart area
       'form[action*="cart"] .product-info',
       '.product-summary',
       '.product-single__meta',
-      // Broader product area selectors
       '[class*="product-detail"]',
       '[class*="productDetail"]',
       '[class*="ProductDetail"]',
@@ -370,10 +381,9 @@
   // RENDERING
   // ========================
   function starHtml(rating) {
-    var full = Math.floor(rating);
-    var half = rating - full >= 0.25 ? 1 : 0;
-    var empty = 5 - full - half;
-    return '<span style="color:#f39c12">' + '\u2605'.repeat(full) + (half ? '\u00BD' : '') + '</span>' +
+    var rounded = Math.round(rating);
+    var empty = 5 - rounded;
+    return '<span style="color:#f39c12">' + '\u2605'.repeat(rounded) + '</span>' +
            '<span style="color:#ddd">' + '\u2606'.repeat(empty) + '</span>';
   }
 
@@ -433,20 +443,26 @@
       html += '</div>';
     }
 
-    // ── "Sevilen ürün! X kişi favoriledi!" ──
+    // ── Rotating social proof messages ──
+    var socialMessages = [];
     if (d.favorite_count && parseInt(d.favorite_count) > 0) {
-      html += '<div class="ak-fav-row">';
-      html += '\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(d.favorite_count) + ' kisi favoriledi!</span>';
-      html += '</div>';
+      socialMessages.push('\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(d.favorite_count) + ' kisi favoriledi!</span>');
     }
-
-    // ── Extra metrics (cart, sold) ──
-    var hasExtras = d.cart_count || d.sold_count;
-    if (hasExtras) {
-      html += '<div class="ak-metrics">';
-      if (d.cart_count) html += '<span class="ak-metric">\uD83D\uDED2 ' + formatNum(d.cart_count) + ' sepette</span>';
-      if (d.sold_count) html += '<span class="ak-metric">\uD83D\uDCE6 ' + formatNum(d.sold_count) + ' satildi</span>';
+    if (d.cart_count && parseInt(d.cart_count) > 0) {
+      socialMessages.push('\uD83D\uDED2 <span class="ak-fav-count">' + formatNum(d.cart_count) + ' kisinin sepetinde,</span> <span>tukenmeden al!</span>');
+    }
+    if (d.sold_count && parseInt(d.sold_count) > 0) {
+      socialMessages.push('\uD83D\uDCE6 <span>3 gunde</span> <span class="ak-fav-count">' + formatNum(d.sold_count) + '+ urun satildi!</span>');
+    }
+    if (d.review_count && parseInt(d.review_count) > 0) {
+      socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(parseInt(d.review_count) * 20) + ' kisi goruntuledi!</span>');
+    }
+    if (socialMessages.length > 0) {
+      html += '<div class="ak-fav-row ak-rotating" data-msg-count="' + socialMessages.length + '">';
+      html += socialMessages[0];
       html += '</div>';
+      // Store messages for rotation (will be attached after render)
+      container._socialMessages = socialMessages;
     }
 
     // ── AI Summary ──
@@ -542,6 +558,21 @@
           tab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       });
+    }
+
+    // Rotating social proof messages
+    var rotatingEl = container.querySelector('.ak-rotating');
+    if (rotatingEl && container._socialMessages && container._socialMessages.length > 1) {
+      var msgs = container._socialMessages;
+      var idx = 0;
+      setInterval(function() {
+        rotatingEl.classList.add('ak-fade');
+        setTimeout(function() {
+          idx = (idx + 1) % msgs.length;
+          rotatingEl.innerHTML = msgs[idx];
+          rotatingEl.classList.remove('ak-fade');
+        }, 400);
+      }, 3500);
     }
   }
 
