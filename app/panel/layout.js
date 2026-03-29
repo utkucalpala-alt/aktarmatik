@@ -25,9 +25,9 @@ export default function PanelLayout({ children }) {
   }
 
   const navItems = [
-    { href: '/panel', label: 'Genel Bakış', icon: '📊' },
-    { href: '/panel/barkodlar', label: 'Barkodlar', icon: '📦' },
-    { href: '/panel/widget', label: 'Widget', icon: '🎨' },
+    { href: '/panel', label: 'Genel Bakis', icon: '📊' },
+    { href: '/panel/barkodlar', label: 'URL Esleme', icon: '🔗' },
+    { href: '/panel/widget', label: 'Entegrasyon', icon: '⚡' },
   ];
 
   if (!user) return null;

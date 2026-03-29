@@ -9,7 +9,8 @@ export default function WidgetPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [copiedIkas, setCopiedIkas] = useState(false);
-  const [activeTab, setActiveTab] = useState('ikas'); // 'ikas' or 'manual'
+  const [activeTab, setActiveTab] = useState('auto'); // 'auto' or 'manual'
+  const [platform, setPlatform] = useState('ikas');
   const token = typeof window !== 'undefined' ? localStorage.getItem('tp_token') : '';
 
   useEffect(() => {
@@ -62,12 +63,12 @@ export default function WidgetPage() {
 
       {/* Tab secimi */}
       <div style={{display:'flex',gap:0,borderBottom:'2px solid var(--border-color)',marginBottom:24}}>
-        <button onClick={()=>setActiveTab('ikas')} style={{
+        <button onClick={()=>setActiveTab('auto')} style={{
           padding:'12px 24px',cursor:'pointer',fontSize:14,fontWeight:600,
-          borderBottom: activeTab==='ikas'?'2px solid var(--accent-primary)':'2px solid transparent',
-          marginBottom:'-2px',color:activeTab==='ikas'?'var(--accent-primary)':'var(--text-muted)',
+          borderBottom: activeTab==='auto'?'2px solid var(--accent-primary)':'2px solid transparent',
+          marginBottom:'-2px',color:activeTab==='auto'?'var(--accent-primary)':'var(--text-muted)',
           background:'transparent',border:'none',fontFamily:'var(--font-sans)'
-        }}>ikas / Otomatik Entegrasyon</button>
+        }}>Otomatik Entegrasyon</button>
         <button onClick={()=>setActiveTab('manual')} style={{
           padding:'12px 24px',cursor:'pointer',fontSize:14,fontWeight:600,
           borderBottom: activeTab==='manual'?'2px solid var(--accent-primary)':'2px solid transparent',
@@ -76,10 +77,34 @@ export default function WidgetPage() {
         }}>Tekil Widget (Manuel)</button>
       </div>
 
-      {/* ==================== ikas TAB ==================== */}
-      {activeTab === 'ikas' && (
+      {/* ==================== AUTO TAB ==================== */}
+      {activeTab === 'auto' && (
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
           <div>
+            {/* Platform Secimi */}
+            <div className="glass-card" style={{padding:24,marginBottom:16}}>
+              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>Site Altyapisi</h2>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:8}}>
+                {[
+                  {value:'ikas', label:'ikas', icon:'🟣'},
+                  {value:'shopify', label:'Shopify', icon:'🟢'},
+                  {value:'wordpress', label:'WordPress', icon:'🔵'},
+                  {value:'ideasoft', label:'IdeaSoft', icon:'🟠'},
+                ].map(p => (
+                  <button key={p.value} onClick={()=>setPlatform(p.value)} style={{
+                    padding:'14px 8px', borderRadius:'var(--radius-md)',
+                    border:`2px solid ${platform===p.value?'var(--accent-primary)':'var(--border-color)'}`,
+                    background: platform===p.value?'rgba(108,92,231,0.1)':'var(--bg-glass)',
+                    cursor:'pointer', textAlign:'center', color:'var(--text-primary)', fontFamily:'var(--font-sans)',
+                    transition:'all 0.15s'
+                  }}>
+                    <div style={{fontSize:24,marginBottom:4}}>{p.icon}</div>
+                    <div style={{fontSize:13,fontWeight:platform===p.value?700:500}}>{p.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Nasil Calisir */}
             <div className="glass-card" style={{padding:24,marginBottom:16}}>
               <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>Nasil Calisir?</h2>
@@ -172,31 +197,77 @@ export default function WidgetPage() {
               </button>
             </div>
 
-            {/* ikas Kurulum Rehberi */}
+            {/* Platform Kurulum Rehberi */}
             <div className="glass-card" style={{padding:24}}>
-              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>ikas Kurulum Rehberi</h2>
+              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>
+                {platform === 'ikas' ? 'ikas' : platform === 'shopify' ? 'Shopify' : platform === 'wordpress' ? 'WordPress' : 'IdeaSoft'} Kurulum Rehberi
+              </h2>
               <div style={{display:'flex',flexDirection:'column',gap:16}}>
-                <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
-                  <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 1: ikas Paneline Gidin</div>
-                  <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
-                    ikas yonetim panelinizde <strong>Satis Kanallari &gt; Magazaniz &gt; Eklentiler</strong> bolumune gidin.
+                {platform === 'ikas' && (<>
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 1: ikas Paneline Gidin</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      ikas yonetim panelinizde <strong>Satis Kanallari &gt; Magazaniz &gt; Eklentiler</strong> bolumune gidin.
+                    </div>
                   </div>
-                </div>
-                <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
-                  <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 2: Script Ekleyin</div>
-                  <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
-                    &quot;Scriptler&quot; alanina yukaridaki kodu yapistirin. Kodun <code style={{background:'rgba(0,0,0,0.1)',padding:'2px 6px',borderRadius:4,fontSize:12}}>&lt;script&gt;...&lt;/script&gt;</code> etiketleri arasinda olduguna emin olun.
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 2: Script Ekleyin</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      &quot;Scriptler&quot; alanina yukaridaki kodu yapistirin.
+                    </div>
                   </div>
-                </div>
+                </>)}
+                {platform === 'shopify' && (<>
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 1: Shopify Admin Paneli</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      Shopify admin panelinizde <strong>Online Store &gt; Themes &gt; Edit Code</strong> bolumune gidin.
+                    </div>
+                  </div>
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 2: theme.liquid Dosyasina Ekleyin</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      <code style={{background:'rgba(0,0,0,0.1)',padding:'2px 6px',borderRadius:4,fontSize:12}}>theme.liquid</code> dosyasinda <code style={{background:'rgba(0,0,0,0.1)',padding:'2px 6px',borderRadius:4,fontSize:12}}>&lt;/body&gt;</code> etiketinin hemen ustune kodu yapistirin.
+                    </div>
+                  </div>
+                </>)}
+                {platform === 'wordpress' && (<>
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 1: WordPress Admin Paneli</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      WordPress admin panelinizde <strong>Gorunum &gt; Tema Duzenleyici &gt; footer.php</strong> dosyasini acin.
+                    </div>
+                  </div>
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 2: Footer&apos;a Ekleyin</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      <code style={{background:'rgba(0,0,0,0.1)',padding:'2px 6px',borderRadius:4,fontSize:12}}>&lt;/body&gt;</code> etiketinin hemen ustune kodu yapistirin. Veya <strong>Insert Headers and Footers</strong> eklentisini kullanabilirsiniz.
+                    </div>
+                  </div>
+                </>)}
+                {platform === 'ideasoft' && (<>
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 1: IdeaSoft Paneli</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      IdeaSoft yonetim panelinizde <strong>Tasarim &gt; Tema Ayarlari &gt; Kod Duzenleyici</strong> bolumune gidin.
+                    </div>
+                  </div>
+                  <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
+                    <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 2: Footer Alanina Ekleyin</div>
+                    <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
+                      Footer bolumune yukaridaki script kodunu yapistirin ve kaydedin.
+                    </div>
+                  </div>
+                </>)}
                 <div style={{padding:16,borderRadius:'var(--radius-sm)',background:'rgba(108,92,231,0.04)',border:'1px solid rgba(108,92,231,0.1)'}}>
-                  <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Adim 3: Kaydedin</div>
+                  <div style={{fontWeight:600,fontSize:14,marginBottom:8}}>Son Adim: Kaydedin</div>
                   <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.6}}>
                     Degisiklikleri kaydedin. Artik eslestirdiginiz urunlerin sayfalarinda Trendyol verileri otomatik olarak gorunecektir.
                   </div>
                 </div>
               </div>
               <div style={{marginTop:16,padding:12,borderRadius:'var(--radius-sm)',background:'rgba(0,184,148,0.08)',border:'1px solid rgba(0,184,148,0.15)',fontSize:13,color:'#00b894'}}>
-                <strong>Ipucu:</strong> Widget, urun sayfalarinda site URL&apos;i eslesmesiyle otomatik calisir. Yeni urun ekledikce widget o sayfalarda da gorunur - ekstra islem gerekmez.
+                <strong>Ipucu:</strong> Widget, urun sayfalarinda site URL&apos;i eslesmesiyle otomatik calisir. Yeni urun ekledikce widget o sayfalarda da gorunur.
               </div>
             </div>
           </div>
