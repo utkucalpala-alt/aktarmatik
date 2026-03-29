@@ -3,13 +3,9 @@ import { useState, useEffect } from 'react';
 
 export default function WidgetPage() {
   const [barcodes, setBarcodes] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [widgetType, setWidgetType] = useState('full');
   const [theme, setTheme] = useState('native');
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [copiedIkas, setCopiedIkas] = useState(false);
-  const [activeTab, setActiveTab] = useState('auto'); // 'auto' or 'manual'
   const [platform, setPlatform] = useState('ikas');
   const token = typeof window !== 'undefined' ? localStorage.getItem('tp_token') : '';
 
@@ -25,20 +21,9 @@ export default function WidgetPage() {
     load();
   }, []);
 
-  function getEmbedCode() {
-    if (!selected) return '';
-    return `<script src="${typeof window !=='undefined'?window.location.origin:''}/widget.js" data-token="${selected}" data-type="${widgetType}" data-theme="${theme}"><\/script>`;
-  }
-
   function getIkasCode() {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     return `<script src="${origin}/widget-auto.js" data-theme="${theme}"><\/script>`;
-  }
-
-  function copyCode() {
-    navigator.clipboard.writeText(getEmbedCode());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   function copyIkasCode() {
@@ -47,13 +32,6 @@ export default function WidgetPage() {
     setTimeout(() => setCopiedIkas(false), 2000);
   }
 
-  const types = [
-    { value: 'full', label: 'Tam Widget', desc: 'Puan + sosyal kanit + yorumlar + AI ozet' },
-    { value: 'social', label: 'Sosyal Kanit', desc: 'Sepet, favori, satis metrikleri' },
-    { value: 'reviews', label: 'Yorumlar', desc: 'Son musteri yorumlari' },
-    { value: 'ai-summary', label: 'AI Ozet', desc: 'Yapay zeka yorum ozeti' },
-  ];
-
   const matchedCount = barcodes.filter(b => b.site_url).length;
 
   return (
@@ -61,24 +39,8 @@ export default function WidgetPage() {
       <h1 style={{fontSize:28,fontWeight:800,marginBottom:4}}>Widget Entegrasyonu</h1>
       <p style={{color:'var(--text-secondary)',fontSize:14,marginBottom:24}}>Web sitenize Trendyol verilerini gomun.</p>
 
-      {/* Tab secimi */}
-      <div style={{display:'flex',gap:0,borderBottom:'2px solid var(--border-color)',marginBottom:24}}>
-        <button onClick={()=>setActiveTab('auto')} style={{
-          padding:'12px 24px',cursor:'pointer',fontSize:14,fontWeight:600,
-          borderBottom: activeTab==='auto'?'2px solid var(--accent-primary)':'2px solid transparent',
-          marginBottom:'-2px',color:activeTab==='auto'?'var(--accent-primary)':'var(--text-muted)',
-          background:'transparent',border:'none',fontFamily:'var(--font-sans)'
-        }}>Otomatik Entegrasyon</button>
-        <button onClick={()=>setActiveTab('manual')} style={{
-          padding:'12px 24px',cursor:'pointer',fontSize:14,fontWeight:600,
-          borderBottom: activeTab==='manual'?'2px solid var(--accent-primary)':'2px solid transparent',
-          marginBottom:'-2px',color:activeTab==='manual'?'var(--accent-primary)':'var(--text-muted)',
-          background:'transparent',border:'none',fontFamily:'var(--font-sans)'
-        }}>Tekil Widget (Manuel)</button>
-      </div>
-
-      {/* ==================== AUTO TAB ==================== */}
-      {activeTab === 'auto' && (
+      {/* Otomatik Entegrasyon */}
+      {(
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
           <div>
             {/* Platform Secimi */}
@@ -274,99 +236,6 @@ export default function WidgetPage() {
         </div>
       )}
 
-      {/* ==================== MANUAL TAB ==================== */}
-      {activeTab === 'manual' && (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
-          <div>
-            {/* Urun secimi */}
-            <div className="glass-card" style={{padding:24,marginBottom:16}}>
-              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>1. Urun Secin</h2>
-              {loading ? <div className="skeleton" style={{height:40}}></div> : (
-                <select className="form-input" style={{width:'100%'}} value={selected||''} onChange={e=>setSelected(e.target.value)}>
-                  <option value="">Bir urun secin...</option>
-                  {barcodes.map(b => (
-                    <option key={b.id} value={b.id}>{b.product_name || `Barkod: ${b.barcode}`}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Widget turu */}
-            <div className="glass-card" style={{padding:24,marginBottom:16}}>
-              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>2. Widget Turu</h2>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                {types.map(t => (
-                  <button key={t.value} onClick={()=>setWidgetType(t.value)} style={{
-                    padding:16, borderRadius:'var(--radius-md)', border:`1px solid ${widgetType===t.value?'var(--accent-primary)':'var(--border-color)'}`,
-                    background: widgetType===t.value?'rgba(108,92,231,0.1)':'var(--bg-glass)', cursor:'pointer', textAlign:'left', color:'var(--text-primary)', fontFamily:'var(--font-sans)'
-                  }}>
-                    <div style={{fontSize:14,fontWeight:600,marginBottom:4}}>{t.label}</div>
-                    <div style={{fontSize:12,color:'var(--text-muted)'}}>{t.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tema */}
-            <div className="glass-card" style={{padding:24}}>
-              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>3. Tema</h2>
-              <div style={{display:'flex',gap:8}}>
-                {['dark','light','native'].map(t => (
-                  <button key={t} onClick={()=>setTheme(t)} style={{
-                    flex:1, padding:'12px 16px', borderRadius:'var(--radius-md)',
-                    border:`1px solid ${theme===t?'var(--accent-primary)':'var(--border-color)'}`,
-                    background: theme===t?'rgba(108,92,231,0.1)':'var(--bg-glass)',
-                    cursor:'pointer', fontWeight:600, fontSize:14, color:'var(--text-primary)', fontFamily:'var(--font-sans)'
-                  }}>
-                    {t==='dark'?'Koyu':t==='light'?'Acik':'Otomatik'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Sag panel - Kod */}
-          <div>
-            <div className="glass-card" style={{padding:24,marginBottom:16}}>
-              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>Gomme Kodu</h2>
-              {selected ? (<>
-                <div style={{background:'var(--bg-primary)',padding:16,borderRadius:'var(--radius-sm)',marginBottom:12}}>
-                  <code style={{fontSize:12,color:'var(--accent-secondary)',wordBreak:'break-all',lineHeight:1.8}}>{getEmbedCode()}</code>
-                </div>
-                <button className="btn btn-primary" onClick={copyCode} style={{width:'100%'}}>{copied?'Kopyalandi!':'Kodu Kopyala'}</button>
-                <p style={{fontSize:12,color:'var(--text-muted)',marginTop:12}}>Bu kodu urun sayfanizin HTML&apos;ine yapistirin.</p>
-              </>) : (
-                <p style={{color:'var(--text-muted)',fontSize:14,textAlign:'center',padding:20}}>Once bir urun secin.</p>
-              )}
-            </div>
-
-            <div className="glass-card" style={{padding:24}}>
-              <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>Onizleme</h2>
-              <div style={{background:theme==='dark'?'#0a0b14':theme==='light'?'#f8f9fa':'#fff',padding:24,borderRadius:'var(--radius-md)',border:'1px solid var(--border-color)',minHeight:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {selected ? (
-                  <div style={{width:'100%',color:theme==='dark'?'#f0f0ff':'#1a1a2e',fontSize:14}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-                      <span style={{fontSize:24,fontWeight:800}}>4.3</span>
-                      <span style={{fontSize:13,opacity:0.7}}>(128 degerlendirme)</span>
-                    </div>
-                    {(widgetType==='full'||widgetType==='social') && (
-                      <div style={{display:'flex',gap:12,marginBottom:12,flexWrap:'wrap'}}>
-                        {['89 sepette','2.4B favori','5.2B satis'].map((s,i)=>(
-                          <span key={i} style={{background:theme==='dark'?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)',padding:'4px 10px',borderRadius:20,fontSize:12}}>{s}</span>
-                        ))}
-                      </div>
-                    )}
-                    {(widgetType==='full'||widgetType==='ai-summary') && (
-                      <p style={{fontSize:13,opacity:0.8,lineHeight:1.6}}>Kullanicilar genel olarak urun kalitesinden memnun. Hizli kargo ve uygun fiyat one cikan olumlu yorumlar arasinda.</p>
-                    )}
-                    <div style={{marginTop:8,fontSize:11,opacity:0.4}}>Powered by AKTARMATIK</div>
-                  </div>
-                ) : <span style={{color:'var(--text-muted)',fontSize:14}}>Onizleme icin urun secin</span>}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
