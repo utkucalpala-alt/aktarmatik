@@ -12,6 +12,7 @@
   var POSITION = script.getAttribute('data-position') || 'auto';
   var ACCENT = script.getAttribute('data-color') || '#6c5ce7';
   var CONTAINER_ID = 'aktarmatik-widget-root';
+  var CONTAINER_BOTTOM_ID = 'aktarmatik-widget-bottom';
 
   // Track current state for SPA navigation
   var currentUrl = '';
@@ -333,48 +334,59 @@
   }
 
   function insertContainer() {
-    // Remove existing container if present
+    // Remove existing containers
     cleanup();
 
-    var container = document.createElement('div');
-    container.id = CONTAINER_ID;
-    container.innerHTML = '<div class="ak-w"><div class="ak-loading">Trendyol verileri yukleniyor...</div></div>';
+    // Top container: rating + social proof (after price)
+    var topContainer = document.createElement('div');
+    topContainer.id = CONTAINER_ID;
+    topContainer.innerHTML = '<div class="ak-w"><div class="ak-loading">Trendyol verileri yukleniyor...</div></div>';
+
+    // Bottom container: AI summary + reviews + QA (after buy buttons)
+    var bottomContainer = document.createElement('div');
+    bottomContainer.id = CONTAINER_BOTTOM_ID;
 
     var point = findInsertionPoint();
 
-    if (POSITION === 'bottom') {
-      var footer = document.querySelector('footer');
-      if (footer && footer.parentNode) {
-        footer.parentNode.insertBefore(container, footer);
-      } else {
-        document.body.appendChild(container);
-      }
-    } else if (POSITION === 'custom') {
-      // User will manually place a <div id="aktarmatik-widget-root"></div>
+    if (POSITION === 'custom') {
       var custom = document.getElementById(CONTAINER_ID);
-      if (custom) return custom;
-      document.body.appendChild(container);
-    } else {
-      // auto or after-cart
-      if (point.method === 'append') {
-        point.parent.appendChild(container);
-      } else if (point.method === 'after') {
-        if (point.parent.nextSibling) {
-          point.parent.parentNode.insertBefore(container, point.parent.nextSibling);
-        } else {
-          point.parent.parentNode.appendChild(container);
-        }
-      } else if (point.method === 'before') {
-        point.parent.parentNode.insertBefore(container, point.parent);
-      }
+      if (custom) return { top: custom, bottom: bottomContainer };
     }
 
-    return container;
+    // Insert top container after price
+    if (point.method === 'append') {
+      point.parent.appendChild(topContainer);
+    } else if (point.method === 'after') {
+      if (point.parent.nextSibling) {
+        point.parent.parentNode.insertBefore(topContainer, point.parent.nextSibling);
+      } else {
+        point.parent.parentNode.appendChild(topContainer);
+      }
+    } else if (point.method === 'before') {
+      point.parent.parentNode.insertBefore(topContainer, point.parent);
+    }
+
+    // Insert bottom container after buy-box
+    var buyBox = document.querySelector('.product-detail-page-buy-box, [class*="buy-box"], [class*="buyBox"]');
+    if (buyBox) {
+      if (buyBox.nextSibling) {
+        buyBox.parentNode.insertBefore(bottomContainer, buyBox.nextSibling);
+      } else {
+        buyBox.parentNode.appendChild(bottomContainer);
+      }
+    } else {
+      // Fallback: append after top container
+      topContainer.parentNode.appendChild(bottomContainer);
+    }
+
+    return { top: topContainer, bottom: bottomContainer };
   }
 
   function cleanup() {
     var existing = document.getElementById(CONTAINER_ID);
     if (existing) existing.remove();
+    var existingBottom = document.getElementById(CONTAINER_BOTTOM_ID);
+    if (existingBottom) existingBottom.remove();
   }
 
   // ========================
@@ -403,47 +415,51 @@
     return div.innerHTML;
   }
 
-  function render(container, data) {
+  function render(containers, data) {
     if (!data || data.error || !data.data) {
       cleanup();
       return;
     }
 
+    var topContainer = containers.top;
+    var bottomContainer = containers.bottom;
     var d = data.data;
     var reviews = data.reviews || [];
     var questions = data.questions || [];
     var analysis = data.analysis;
-    var product = data.product;
 
-    var html = '<div class="ak-w">';
+    // =============================================
+    // TOP SECTION: Rating + Social proof (above buy buttons)
+    // =============================================
+    var topHtml = '<div class="ak-w">';
 
-    // ── Rating row: 4.9 ★★★★★ · 54 Değerlendirme · 36 Soru-Cevap ──
+    // Rating row
     if (d.rating) {
-      html += '<div class="ak-rating-row">';
-      html += '<span class="ak-rating-num">' + parseFloat(d.rating).toFixed(1) + '</span>';
-      html += '<span class="ak-stars">' + starHtml(parseFloat(d.rating)) + '</span>';
+      topHtml += '<div class="ak-rating-row">';
+      topHtml += '<span class="ak-rating-num">' + parseFloat(d.rating).toFixed(1) + '</span>';
+      topHtml += '<span class="ak-stars">' + starHtml(parseFloat(d.rating)) + '</span>';
       if (d.review_count) {
-        html += '<span class="ak-dot">&middot;</span>';
-        html += '<span class="ak-rating-link" data-scroll="reviews">' + formatNum(d.review_count) + ' Degerlendirme</span>';
+        topHtml += '<span class="ak-dot">&middot;</span>';
+        topHtml += '<span class="ak-rating-link" data-scroll="reviews">' + formatNum(d.review_count) + ' Degerlendirme</span>';
       }
       if (d.question_count) {
-        html += '<span class="ak-dot">&middot;</span>';
-        html += '<span class="ak-rating-link" data-scroll="qa">' + formatNum(d.question_count) + ' Soru-Cevap</span>';
+        topHtml += '<span class="ak-dot">&middot;</span>';
+        topHtml += '<span class="ak-rating-link" data-scroll="qa">' + formatNum(d.question_count) + ' Soru-Cevap</span>';
       }
-      html += '</div>';
+      topHtml += '</div>';
     }
 
-    // ── "Kullanıcılar Beğeniyor!" badge ──
+    // "Kullanıcılar Beğeniyor!" badge
     var reviewCount = parseInt(d.review_count) || 0;
     var rating = parseFloat(d.rating) || 0;
     if (rating >= 4.0 && reviewCount >= 10) {
-      html += '<div class="ak-popular">';
-      html += '<span class="ak-popular-badge">\u2705 Kullanicilar Begeniyor!</span>';
-      html += '<span class="ak-popular-link" data-scroll="reviews">Yorumlari Incele &rsaquo;</span>';
-      html += '</div>';
+      topHtml += '<div class="ak-popular">';
+      topHtml += '<span class="ak-popular-badge">\u2705 Kullanicilar Begeniyor!</span>';
+      topHtml += '<span class="ak-popular-link" data-scroll="reviews">Yorumlari Incele &rsaquo;</span>';
+      topHtml += '</div>';
     }
 
-    // ── Rotating social proof messages ──
+    // Rotating social proof messages
     var socialMessages = [];
     if (d.favorite_count && parseInt(d.favorite_count) > 0) {
       socialMessages.push('\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(d.favorite_count) + ' kisi favoriledi!</span>');
@@ -458,99 +474,105 @@
       socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(parseInt(d.review_count) * 20) + ' kisi goruntuledi!</span>');
     }
     if (socialMessages.length > 0) {
-      html += '<div class="ak-fav-row ak-rotating">';
-      html += socialMessages[0];
-      html += '</div>';
+      topHtml += '<div class="ak-fav-row ak-rotating">';
+      topHtml += socialMessages[0];
+      topHtml += '</div>';
     }
 
-    // ── AI Summary ──
-    if (analysis && analysis.summary) {
-      html += '<div class="ak-ai">\uD83E\uDD16 <strong>AI Ozet:</strong> ' + escHtml(analysis.summary) + '</div>';
-    }
+    topHtml += '</div>';
+    topContainer.innerHTML = topHtml;
 
-    // ── Sentiment badges ──
-    if (analysis && analysis.sentiment) {
-      try {
-        var sentiment = typeof analysis.sentiment === 'string' ? JSON.parse(analysis.sentiment) : analysis.sentiment;
-        if (sentiment.positive || sentiment.neutral || sentiment.negative) {
-          html += '<div class="ak-sentiment">';
-          if (sentiment.positive) html += '<span class="ak-sentiment-item" style="background:rgba(0,184,148,0.1);color:#00b894">\u2705 %' + sentiment.positive + ' Olumlu</span>';
-          if (sentiment.neutral) html += '<span class="ak-sentiment-item" style="background:rgba(108,92,231,0.1);color:#6c5ce7">\u2796 %' + sentiment.neutral + ' Notr</span>';
-          if (sentiment.negative) html += '<span class="ak-sentiment-item" style="background:rgba(214,48,49,0.1);color:#d63031">\u274C %' + sentiment.negative + ' Olumsuz</span>';
-          html += '</div>';
-        }
-      } catch(e) {}
-    }
-
-    // ── Tabs: Reviews + Q&A ──
+    // =============================================
+    // BOTTOM SECTION: AI summary + Reviews + QA (below buy buttons)
+    // =============================================
     var hasReviews = reviews.length > 0;
     var hasQa = questions.length > 0;
+    var hasBottom = analysis || hasReviews || hasQa;
 
-    if (hasReviews || hasQa) {
-      html += '<div class="ak-tabs">';
-      if (hasReviews) html += '<div class="ak-tab active" data-tab="reviews">Yorumlar (' + reviews.length + ')</div>';
-      if (hasQa) html += '<div class="ak-tab' + (!hasReviews ? ' active' : '') + '" data-tab="qa">Soru-Cevap (' + questions.length + ')</div>';
-      html += '</div>';
+    if (hasBottom) {
+      var btmHtml = '<div class="ak-w">';
 
-      // Reviews panel
-      if (hasReviews) {
-        html += '<div class="ak-panel active" data-panel="reviews">';
-        for (var ri = 0; ri < reviews.length; ri++) {
-          var r = reviews[ri];
-          html += '<div class="ak-review">';
-          html += '<div class="ak-review-head">';
-          html += '<span class="ak-review-author">' + escHtml(r.author) + '</span>';
-          html += '<span class="ak-review-stars">' + starHtml(r.rating || 5) + '</span>';
-          html += '</div>';
-          html += '<div class="ak-review-text">' + escHtml(r.content) + '</div>';
-          if (r.review_date) html += '<div class="ak-review-date">' + escHtml(r.review_date) + '</div>';
-          html += '</div>';
-        }
-        html += '</div>';
+      // Yorumların Özeti (AI summary)
+      if (analysis && analysis.summary) {
+        btmHtml += '<div class="ak-ai">\uD83D\uDCDD <strong>Yorumlarin Ozeti:</strong> ' + escHtml(analysis.summary) + '</div>';
       }
 
-      // Q&A panel
-      if (hasQa) {
-        html += '<div class="ak-panel' + (!hasReviews ? ' active' : '') + '" data-panel="qa">';
-        for (var qi = 0; qi < questions.length; qi++) {
-          var q = questions[qi];
-          html += '<div class="ak-qa">';
-          html += '<div class="ak-qa-q">' + escHtml(q.question_text) + '</div>';
-          if (q.answer_text) html += '<div class="ak-qa-a">' + escHtml(q.answer_text) + '</div>';
-          html += '<div class="ak-qa-meta">' + escHtml(q.user_name || '') + (q.question_date ? ' &middot; ' + escHtml(q.question_date) : '') + '</div>';
-          html += '</div>';
-        }
-        html += '</div>';
+      // Sentiment badges
+      if (analysis && analysis.sentiment) {
+        try {
+          var sentiment = typeof analysis.sentiment === 'string' ? JSON.parse(analysis.sentiment) : analysis.sentiment;
+          if (sentiment.positive || sentiment.neutral || sentiment.negative) {
+            btmHtml += '<div class="ak-sentiment">';
+            if (sentiment.positive) btmHtml += '<span class="ak-sentiment-item" style="background:rgba(0,184,148,0.1);color:#00b894">\u2705 %' + sentiment.positive + ' Olumlu</span>';
+            if (sentiment.neutral) btmHtml += '<span class="ak-sentiment-item" style="background:rgba(108,92,231,0.1);color:#6c5ce7">\u2796 %' + sentiment.neutral + ' Notr</span>';
+            if (sentiment.negative) btmHtml += '<span class="ak-sentiment-item" style="background:rgba(214,48,49,0.1);color:#d63031">\u274C %' + sentiment.negative + ' Olumsuz</span>';
+            btmHtml += '</div>';
+          }
+        } catch(e) {}
       }
-    } else if (!hasExtras && !d.favorite_count && !analysis) {
-      html += '<div class="ak-empty">Henuz veri bulunamadi.</div>';
+
+      // Tabs: Reviews + Q&A
+      if (hasReviews || hasQa) {
+        btmHtml += '<div class="ak-tabs">';
+        if (hasReviews) btmHtml += '<div class="ak-tab active" data-tab="reviews">Yorumlar (' + reviews.length + ')</div>';
+        if (hasQa) btmHtml += '<div class="ak-tab' + (!hasReviews ? ' active' : '') + '" data-tab="qa">Soru-Cevap (' + questions.length + ')</div>';
+        btmHtml += '</div>';
+
+        if (hasReviews) {
+          btmHtml += '<div class="ak-panel active" data-panel="reviews">';
+          for (var ri = 0; ri < reviews.length; ri++) {
+            var r = reviews[ri];
+            btmHtml += '<div class="ak-review">';
+            btmHtml += '<div class="ak-review-head">';
+            btmHtml += '<span class="ak-review-author">' + escHtml(r.author) + '</span>';
+            btmHtml += '<span class="ak-review-stars">' + starHtml(r.rating || 5) + '</span>';
+            btmHtml += '</div>';
+            btmHtml += '<div class="ak-review-text">' + escHtml(r.content) + '</div>';
+            if (r.review_date) btmHtml += '<div class="ak-review-date">' + escHtml(r.review_date) + '</div>';
+            btmHtml += '</div>';
+          }
+          btmHtml += '</div>';
+        }
+
+        if (hasQa) {
+          btmHtml += '<div class="ak-panel' + (!hasReviews ? ' active' : '') + '" data-panel="qa">';
+          for (var qi = 0; qi < questions.length; qi++) {
+            var q = questions[qi];
+            btmHtml += '<div class="ak-qa">';
+            btmHtml += '<div class="ak-qa-q">' + escHtml(q.question_text) + '</div>';
+            if (q.answer_text) btmHtml += '<div class="ak-qa-a">' + escHtml(q.answer_text) + '</div>';
+            btmHtml += '<div class="ak-qa-meta">' + escHtml(q.user_name || '') + (q.question_date ? ' &middot; ' + escHtml(q.question_date) : '') + '</div>';
+            btmHtml += '</div>';
+          }
+          btmHtml += '</div>';
+        }
+      }
+
+      btmHtml += '<div class="ak-footer">Powered by <a href="https://aktarmatik.webtasarimi.net" target="_blank" rel="noopener">AKTARMATIK</a></div>';
+      btmHtml += '</div>';
+      bottomContainer.innerHTML = btmHtml;
+
+      // Tab click handlers (bottom container)
+      var tabs = bottomContainer.querySelectorAll('.ak-tab');
+      for (var ti = 0; ti < tabs.length; ti++) {
+        tabs[ti].addEventListener('click', function() {
+          var allTabs = bottomContainer.querySelectorAll('.ak-tab');
+          var allPanels = bottomContainer.querySelectorAll('.ak-panel');
+          for (var x = 0; x < allTabs.length; x++) allTabs[x].classList.remove('active');
+          for (var y = 0; y < allPanels.length; y++) allPanels[y].classList.remove('active');
+          this.classList.add('active');
+          var panel = bottomContainer.querySelector('[data-panel="' + this.getAttribute('data-tab') + '"]');
+          if (panel) panel.classList.add('active');
+        });
+      }
     }
 
-    html += '<div class="ak-footer">Powered by <a href="https://aktarmatik.webtasarimi.net" target="_blank" rel="noopener">AKTARMATIK</a></div>';
-    html += '</div>';
-
-    container.innerHTML = html;
-
-    // Tab click handlers
-    var tabs = container.querySelectorAll('.ak-tab');
-    for (var ti = 0; ti < tabs.length; ti++) {
-      tabs[ti].addEventListener('click', function() {
-        var allTabs = container.querySelectorAll('.ak-tab');
-        var allPanels = container.querySelectorAll('.ak-panel');
-        for (var x = 0; x < allTabs.length; x++) allTabs[x].classList.remove('active');
-        for (var y = 0; y < allPanels.length; y++) allPanels[y].classList.remove('active');
-        this.classList.add('active');
-        var panel = container.querySelector('[data-panel="' + this.getAttribute('data-tab') + '"]');
-        if (panel) panel.classList.add('active');
-      });
-    }
-
-    // Scroll-to-tab links (rating row & popular badge links)
-    var scrollLinks = container.querySelectorAll('[data-scroll]');
+    // Scroll-to-tab links (top container links scroll to bottom tabs)
+    var scrollLinks = topContainer.querySelectorAll('[data-scroll]');
     for (var si = 0; si < scrollLinks.length; si++) {
       scrollLinks[si].addEventListener('click', function() {
         var target = this.getAttribute('data-scroll');
-        var tab = container.querySelector('.ak-tab[data-tab="' + target + '"]');
+        var tab = bottomContainer.querySelector('.ak-tab[data-tab="' + target + '"]');
         if (tab) {
           tab.click();
           tab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -571,7 +593,7 @@
             el.classList.remove('ak-fade');
           }, 400);
         }, 3500);
-      })(container.querySelector('.ak-rotating'), socialMessages);
+      })(topContainer.querySelector('.ak-rotating'), socialMessages);
     }
   }
 
@@ -639,13 +661,13 @@
       currentBarcode = barcode;
       isLoading = true;
 
-      var container = insertContainer();
-      if (!container) { isLoading = false; return; }
+      var containers = insertContainer();
+      if (!containers || !containers.top) { isLoading = false; return; }
 
       fetchData(barcode, currentUrl, function(data) {
         isLoading = false;
         if (data) {
-          render(container, data);
+          render(containers, data);
         } else {
           cleanup();
         }
