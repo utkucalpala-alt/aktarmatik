@@ -47,7 +47,7 @@ export async function GET(request) {
     );
 
     const questions = await query(
-      'SELECT user_name, question_text, answer_text, question_date FROM tp_questions WHERE barcode_id = $1 ORDER BY created_at DESC LIMIT 10',
+      'SELECT user_name, question_text, answer_text, question_date FROM tp_questions WHERE barcode_id = $1 ORDER BY id DESC LIMIT 10',
       [bc.id]
     );
 
