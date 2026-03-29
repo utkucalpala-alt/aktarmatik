@@ -494,19 +494,18 @@
     if (hasBottom) {
       var btmHtml = '<div class="ak-w">';
 
-      // En Faydalı Yorum (longest high-rated review)
+      // En Faydalı Yorum (random 5-star review)
       if (hasReviews) {
-        var bestReview = null;
+        var fiveStarReviews = [];
         for (var br = 0; br < reviews.length; br++) {
           var rv = reviews[br];
           var content = rv.content || '';
-          var rvRating = rv.rating || 5;
-          if (rvRating >= 4 && content.length > 30) {
-            if (!bestReview || content.length > (bestReview.content || '').length) {
-              bestReview = rv;
-            }
+          var rvRating = rv.rating || 0;
+          if (rvRating === 5 && content.length > 20) {
+            fiveStarReviews.push(rv);
           }
         }
+        var bestReview = fiveStarReviews.length > 0 ? fiveStarReviews[Math.floor(Math.random() * fiveStarReviews.length)] : null;
         if (bestReview) {
           btmHtml += '<div class="ak-ai">';
           btmHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
