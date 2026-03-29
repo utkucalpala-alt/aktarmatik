@@ -475,13 +475,17 @@
     if (d.review_count && parseInt(d.review_count) > 0) {
       socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(parseInt(d.review_count) * 20) + ' kisi goruntuledi!</span>');
     }
-    if (rating >= 4.0) {
-      var tavsiyeOran = Math.round(rating * 20);
-      socialMessages.push('\u2705 <span>Alicilarin <strong>%' + tavsiyeOran + '\'i</strong> bu urunu tavsiye ediyor!</span>');
-    }
     if (socialMessages.length > 0) {
       topHtml += '<div class="ak-fav-row ak-rotating">';
       topHtml += socialMessages[0];
+      topHtml += '</div>';
+    }
+
+    // Tavsiye oranı - ayrı sabit satır
+    if (rating >= 4.0) {
+      var tavsiyeOran = Math.round(rating * 20);
+      topHtml += '<div class="ak-fav-row" style="background:rgba(0,184,148,0.08);border:1px solid rgba(0,184,148,0.2);margin-top:6px">';
+      topHtml += '\u2705 <span>Alicilarin <strong>%' + tavsiyeOran + '\'i</strong> bu urunu tavsiye ediyor!</span>';
       topHtml += '</div>';
     }
 
