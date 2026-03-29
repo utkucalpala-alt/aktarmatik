@@ -34,41 +34,70 @@
 
   function injectStyles() {
     if (document.getElementById('aktarmatik-widget-styles')) return;
+    var C = '#' + CONTAINER_ID;
     var css = [
-      '#' + CONTAINER_ID + ' * { box-sizing: border-box; margin: 0; padding: 0; font-family: inherit; }',
-      '#' + CONTAINER_ID + ' .ak-w { padding: 24px 0; color: ' + colors.text + '; width: 100%; }',
-      '#' + CONTAINER_ID + ' .ak-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }',
-      '#' + CONTAINER_ID + ' .ak-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }',
-      '#' + CONTAINER_ID + ' .ak-rating { font-size: 32px; font-weight: 800; line-height: 1; }',
-      '#' + CONTAINER_ID + ' .ak-stars { color: #f39c12; font-size: 18px; letter-spacing: 1px; }',
-      '#' + CONTAINER_ID + ' .ak-count { font-size: 14px; color: ' + colors.muted + '; }',
-      '#' + CONTAINER_ID + ' .ak-social { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }',
-      '#' + CONTAINER_ID + ' .ak-badge { background: rgba(108,92,231,0.08); border: 1px solid rgba(108,92,231,0.15); padding: 6px 14px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; }',
-      '#' + CONTAINER_ID + ' .ak-tabs { display: flex; gap: 0; border-bottom: 2px solid ' + colors.border + '; margin-bottom: 16px; }',
-      '#' + CONTAINER_ID + ' .ak-tab { padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -2px; color: ' + colors.muted + '; transition: all 0.2s; user-select: none; }',
-      '#' + CONTAINER_ID + ' .ak-tab:hover { color: ' + colors.text + '; }',
-      '#' + CONTAINER_ID + ' .ak-tab.active { color: ' + colors.accent + '; border-bottom-color: ' + colors.accent + '; }',
-      '#' + CONTAINER_ID + ' .ak-panel { display: none; }',
-      '#' + CONTAINER_ID + ' .ak-panel.active { display: block; }',
-      '#' + CONTAINER_ID + ' .ak-review { padding: 14px; border: 1px solid ' + colors.border + '; border-radius: 10px; margin: 10px 0; }',
-      '#' + CONTAINER_ID + ' .ak-review-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }',
-      '#' + CONTAINER_ID + ' .ak-review-author { font-weight: 600; font-size: 14px; }',
-      '#' + CONTAINER_ID + ' .ak-review-stars { color: #f39c12; font-size: 12px; }',
-      '#' + CONTAINER_ID + ' .ak-review-text { font-size: 14px; line-height: 1.6; color: ' + colors.muted + '; }',
-      '#' + CONTAINER_ID + ' .ak-review-date { font-size: 12px; color: ' + colors.muted + '; opacity: 0.7; margin-top: 4px; }',
-      '#' + CONTAINER_ID + ' .ak-qa { padding: 14px; border: 1px solid ' + colors.border + '; border-radius: 10px; margin: 10px 0; }',
-      '#' + CONTAINER_ID + ' .ak-qa-q { font-weight: 600; font-size: 14px; margin-bottom: 8px; }',
-      '#' + CONTAINER_ID + ' .ak-qa-q::before { content: "S: "; color: ' + colors.accent + '; font-weight: 700; }',
-      '#' + CONTAINER_ID + ' .ak-qa-a { font-size: 14px; color: ' + colors.muted + '; line-height: 1.5; padding-left: 16px; border-left: 3px solid #00b894; }',
-      '#' + CONTAINER_ID + ' .ak-qa-a::before { content: "C: "; color: #00b894; font-weight: 700; }',
-      '#' + CONTAINER_ID + ' .ak-qa-meta { font-size: 12px; color: ' + colors.muted + '; opacity: 0.7; margin-top: 4px; }',
-      '#' + CONTAINER_ID + ' .ak-ai { font-size: 14px; line-height: 1.6; padding: 16px; background: rgba(0,184,148,0.05); border-left: 4px solid #00b894; border-radius: 0 8px 8px 0; margin-bottom: 16px; }',
-      '#' + CONTAINER_ID + ' .ak-footer { margin-top: 16px; font-size: 11px; opacity: 0.5; text-align: right; }',
-      '#' + CONTAINER_ID + ' .ak-footer a { color: inherit; text-decoration: none; font-weight: 600; }',
-      '#' + CONTAINER_ID + ' .ak-empty { text-align: center; padding: 30px; color: ' + colors.muted + '; font-size: 14px; }',
-      '#' + CONTAINER_ID + ' .ak-loading { text-align: center; padding: 20px; opacity: 0.5; }',
-      '#' + CONTAINER_ID + ' .ak-sentiment { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }',
-      '#' + CONTAINER_ID + ' .ak-sentiment-item { font-size: 13px; padding: 4px 10px; border-radius: 12px; font-weight: 500; }',
+      C + ' * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }',
+      C + ' .ak-w { padding: 16px 0; color: ' + colors.text + '; width: 100%; border-top: 1px solid ' + colors.border + '; margin-top: 12px; }',
+
+      /* Rating row - inline like ikas: 4.9 ★★★★★ · 54 Değerlendirme · 36 Soru-Cevap */
+      C + ' .ak-rating-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; font-size: 14px; }',
+      C + ' .ak-rating-num { font-weight: 700; font-size: 15px; color: ' + colors.text + '; }',
+      C + ' .ak-stars { color: #f39c12; font-size: 14px; letter-spacing: 0; }',
+      C + ' .ak-dot { color: #999; font-size: 13px; }',
+      C + ' .ak-rating-link { color: #555; font-size: 13px; text-decoration: none; cursor: pointer; }',
+      C + ' .ak-rating-link:hover { text-decoration: underline; }',
+
+      /* Popular badge - green like ikas "Kullanıcılar Beğeniyor" */
+      C + ' .ak-popular { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 13px; }',
+      C + ' .ak-popular-badge { color: #00b894; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }',
+      C + ' .ak-popular-link { color: #ff6b00; font-size: 13px; text-decoration: none; cursor: pointer; }',
+      C + ' .ak-popular-link:hover { text-decoration: underline; }',
+
+      /* Favorite row - heart icon like ikas */
+      C + ' .ak-fav-row { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 13px; color: #e74c3c; }',
+      C + ' .ak-fav-row span { font-weight: 600; }',
+      C + ' .ak-fav-count { color: #ff6b00; font-weight: 700; }',
+
+      /* Social metrics row */
+      C + ' .ak-metrics { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }',
+      C + ' .ak-metric { background: #f5f5f5; padding: 5px 12px; border-radius: 16px; font-size: 12px; color: #555; display: inline-flex; align-items: center; gap: 4px; }',
+
+      /* AI Summary */
+      C + ' .ak-ai { font-size: 13px; line-height: 1.6; padding: 12px 14px; background: rgba(0,184,148,0.06); border-left: 3px solid #00b894; border-radius: 0 6px 6px 0; margin-bottom: 14px; color: #444; }',
+
+      /* Sentiment */
+      C + ' .ak-sentiment { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }',
+      C + ' .ak-sentiment-item { font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 500; }',
+
+      /* Tabs */
+      C + ' .ak-tabs { display: flex; gap: 0; border-bottom: 1px solid #e0e0e0; margin-bottom: 12px; }',
+      C + ' .ak-tab { padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; color: #999; transition: all 0.2s; user-select: none; }',
+      C + ' .ak-tab:hover { color: #333; }',
+      C + ' .ak-tab.active { color: #ff6b00; border-bottom-color: #ff6b00; }',
+      C + ' .ak-panel { display: none; }',
+      C + ' .ak-panel.active { display: block; }',
+
+      /* Reviews */
+      C + ' .ak-review { padding: 12px; border: 1px solid #eee; border-radius: 8px; margin: 8px 0; }',
+      C + ' .ak-review-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }',
+      C + ' .ak-review-author { font-weight: 600; font-size: 13px; color: #333; }',
+      C + ' .ak-review-stars { color: #f39c12; font-size: 11px; }',
+      C + ' .ak-review-text { font-size: 13px; line-height: 1.5; color: #666; }',
+      C + ' .ak-review-date { font-size: 11px; color: #999; margin-top: 4px; }',
+
+      /* Q&A */
+      C + ' .ak-qa { padding: 12px; border: 1px solid #eee; border-radius: 8px; margin: 8px 0; }',
+      C + ' .ak-qa-q { font-weight: 600; font-size: 13px; margin-bottom: 6px; }',
+      C + ' .ak-qa-q::before { content: "S: "; color: #ff6b00; font-weight: 700; }',
+      C + ' .ak-qa-a { font-size: 13px; color: #666; line-height: 1.5; padding-left: 12px; border-left: 2px solid #00b894; }',
+      C + ' .ak-qa-a::before { content: "C: "; color: #00b894; font-weight: 700; }',
+      C + ' .ak-qa-meta { font-size: 11px; color: #999; margin-top: 4px; }',
+
+      /* Footer & utility */
+      C + ' .ak-footer { margin-top: 12px; font-size: 10px; opacity: 0.4; text-align: right; }',
+      C + ' .ak-footer a { color: inherit; text-decoration: none; font-weight: 600; }',
+      C + ' .ak-empty { text-align: center; padding: 20px; color: #999; font-size: 13px; }',
+      C + ' .ak-loading { text-align: center; padding: 16px; opacity: 0.5; font-size: 13px; }',
     ].join('\n');
 
     var styleEl = document.createElement('style');
@@ -378,42 +407,54 @@
 
     var html = '<div class="ak-w">';
 
-    // Title with Trendyol source indicator
-    html += '<div class="ak-title">';
-    html += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + colors.accent + '" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
-    html += ' Trendyol Verileri';
-    if (product && product.name) html += ' <span style="font-weight:400;font-size:13px;opacity:0.6">- ' + escHtml(product.name) + '</span>';
-    html += '</div>';
-
-    // Rating header
+    // ── Rating row: 4.9 ★★★★★ · 54 Değerlendirme · 36 Soru-Cevap ──
     if (d.rating) {
-      html += '<div class="ak-header">';
-      html += '<span class="ak-rating">' + parseFloat(d.rating).toFixed(1) + '</span>';
-      html += '<div>';
-      html += '<div class="ak-stars">' + starHtml(parseFloat(d.rating)) + '</div>';
-      html += '<div class="ak-count">' + formatNum(d.review_count) + ' degerlendirme';
-      if (d.question_count) html += ' &middot; ' + formatNum(d.question_count) + ' soru';
-      html += '</div>';
-      html += '</div>';
-      html += '</div>';
-    }
-
-    // Social proof badges
-    var hasSocial = d.favorite_count || d.cart_count || d.sold_count;
-    if (hasSocial) {
-      html += '<div class="ak-social">';
-      if (d.favorite_count) html += '<span class="ak-badge">\u2764\uFE0F ' + formatNum(d.favorite_count) + ' favori</span>';
-      if (d.cart_count) html += '<span class="ak-badge">\uD83D\uDED2 ' + formatNum(d.cart_count) + ' sepette</span>';
-      if (d.sold_count) html += '<span class="ak-badge">\uD83D\uDCE6 ' + formatNum(d.sold_count) + ' satildi</span>';
+      html += '<div class="ak-rating-row">';
+      html += '<span class="ak-rating-num">' + parseFloat(d.rating).toFixed(1) + '</span>';
+      html += '<span class="ak-stars">' + starHtml(parseFloat(d.rating)) + '</span>';
+      if (d.review_count) {
+        html += '<span class="ak-dot">&middot;</span>';
+        html += '<span class="ak-rating-link" data-scroll="reviews">' + formatNum(d.review_count) + ' Degerlendirme</span>';
+      }
+      if (d.question_count) {
+        html += '<span class="ak-dot">&middot;</span>';
+        html += '<span class="ak-rating-link" data-scroll="qa">' + formatNum(d.question_count) + ' Soru-Cevap</span>';
+      }
       html += '</div>';
     }
 
-    // AI Summary
+    // ── "Kullanıcılar Beğeniyor!" badge ──
+    var reviewCount = parseInt(d.review_count) || 0;
+    var rating = parseFloat(d.rating) || 0;
+    if (rating >= 4.0 && reviewCount >= 10) {
+      html += '<div class="ak-popular">';
+      html += '<span class="ak-popular-badge">\u2705 Kullanicilar Begeniyor!</span>';
+      html += '<span class="ak-popular-link" data-scroll="reviews">Yorumlari Incele &rsaquo;</span>';
+      html += '</div>';
+    }
+
+    // ── "Sevilen ürün! X kişi favoriledi!" ──
+    if (d.favorite_count && parseInt(d.favorite_count) > 0) {
+      html += '<div class="ak-fav-row">';
+      html += '\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(d.favorite_count) + ' kisi favoriledi!</span>';
+      html += '</div>';
+    }
+
+    // ── Extra metrics (cart, sold) ──
+    var hasExtras = d.cart_count || d.sold_count;
+    if (hasExtras) {
+      html += '<div class="ak-metrics">';
+      if (d.cart_count) html += '<span class="ak-metric">\uD83D\uDED2 ' + formatNum(d.cart_count) + ' sepette</span>';
+      if (d.sold_count) html += '<span class="ak-metric">\uD83D\uDCE6 ' + formatNum(d.sold_count) + ' satildi</span>';
+      html += '</div>';
+    }
+
+    // ── AI Summary ──
     if (analysis && analysis.summary) {
       html += '<div class="ak-ai">\uD83E\uDD16 <strong>AI Ozet:</strong> ' + escHtml(analysis.summary) + '</div>';
     }
 
-    // Sentiment badges
+    // ── Sentiment badges ──
     if (analysis && analysis.sentiment) {
       try {
         var sentiment = typeof analysis.sentiment === 'string' ? JSON.parse(analysis.sentiment) : analysis.sentiment;
@@ -427,14 +468,14 @@
       } catch(e) {}
     }
 
-    // Tabs: Reviews + Q&A
+    // ── Tabs: Reviews + Q&A ──
     var hasReviews = reviews.length > 0;
     var hasQa = questions.length > 0;
 
     if (hasReviews || hasQa) {
       html += '<div class="ak-tabs">';
-      if (hasReviews) html += '<div class="ak-tab active" data-tab="reviews">\uD83D\uDCAC Yorumlar (' + reviews.length + ')</div>';
-      if (hasQa) html += '<div class="ak-tab' + (!hasReviews ? ' active' : '') + '" data-tab="qa">\u2753 Soru-Cevap (' + questions.length + ')</div>';
+      if (hasReviews) html += '<div class="ak-tab active" data-tab="reviews">Yorumlar (' + reviews.length + ')</div>';
+      if (hasQa) html += '<div class="ak-tab' + (!hasReviews ? ' active' : '') + '" data-tab="qa">Soru-Cevap (' + questions.length + ')</div>';
       html += '</div>';
 
       // Reviews panel
@@ -467,7 +508,7 @@
         }
         html += '</div>';
       }
-    } else if (!hasSocial && !analysis) {
+    } else if (!hasExtras && !d.favorite_count && !analysis) {
       html += '<div class="ak-empty">Henuz veri bulunamadi.</div>';
     }
 
@@ -487,6 +528,19 @@
         this.classList.add('active');
         var panel = container.querySelector('[data-panel="' + this.getAttribute('data-tab') + '"]');
         if (panel) panel.classList.add('active');
+      });
+    }
+
+    // Scroll-to-tab links (rating row & popular badge links)
+    var scrollLinks = container.querySelectorAll('[data-scroll]');
+    for (var si = 0; si < scrollLinks.length; si++) {
+      scrollLinks[si].addEventListener('click', function() {
+        var target = this.getAttribute('data-scroll');
+        var tab = container.querySelector('.ak-tab[data-tab="' + target + '"]');
+        if (tab) {
+          tab.click();
+          tab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
       });
     }
   }
