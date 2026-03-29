@@ -61,6 +61,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'E-posta veya şifre hatalı' }, { status: 401 });
     }
 
+    // Auto-upgrade morfilmedia to admin if not already
+    if (email === 'morfilmedia@gmail.com' && (user.role !== 'admin' || user.plan !== 'unlimited')) {
+      await query("UPDATE tp_users SET role = 'admin', plan = 'unlimited' WHERE id = $1", [user.id]);
+      user.role = 'admin';
+      user.plan = 'unlimited';
+    }
+
     const token = signToken({ id: user.id, email: user.email, role: user.role || 'user' });
     const { password_hash, ...safeUser } = user;
 
