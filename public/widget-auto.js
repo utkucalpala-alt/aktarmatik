@@ -475,6 +475,10 @@
     if (d.review_count && parseInt(d.review_count) > 0) {
       socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(parseInt(d.review_count) * 20) + ' kisi goruntuledi!</span>');
     }
+    if (rating >= 4.0) {
+      var tavsiyeOran = Math.round(rating * 20);
+      socialMessages.push('\u2705 <span>Alicilarin <strong>%' + tavsiyeOran + '\'i</strong> bu urunu tavsiye ediyor!</span>');
+    }
     if (socialMessages.length > 0) {
       topHtml += '<div class="ak-fav-row ak-rotating">';
       topHtml += socialMessages[0];
