@@ -196,8 +196,14 @@ export async function POST(request) {
     // Run analysis based on the freshly inserted reviews
     try {
        const mappedReviews = allReviews.slice(0, 30).map(r => ({ author: r.author || r.user_full_name, rating: r.rating || r.rate, content: r.content || r.comment, date: r.date || r.created_at }));
-       const { generateMockAnalysis } = await import('@/lib/scraper');
-       const analysis = generateMockAnalysis(safeProductName, rating, mappedReviews);
+       const { generateAIAnalysis, generateMockAnalysis } = await import('@/lib/scraper');
+       let analysis;
+       try {
+         analysis = await generateAIAnalysis(safeProductName, rating, mappedReviews);
+       } catch(aiErr) {
+         console.warn('AI analysis failed, using mock:', aiErr.message);
+         analysis = generateMockAnalysis(safeProductName, rating, mappedReviews);
+       }
 
        await query('DELETE FROM tp_ai_analysis WHERE barcode_id = $1', [barcodeId]);
        await query(
