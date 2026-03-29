@@ -494,23 +494,29 @@
     if (hasBottom) {
       var btmHtml = '<div class="ak-w">';
 
-      // Yorumların Özeti (AI summary)
-      if (analysis && analysis.summary) {
-        btmHtml += '<div class="ak-ai">\uD83D\uDCDD <strong>Yorumlarin Ozeti:</strong> ' + escHtml(analysis.summary) + '</div>';
-      }
-
-      // Sentiment badges
-      if (analysis && analysis.sentiment) {
-        try {
-          var sentiment = typeof analysis.sentiment === 'string' ? JSON.parse(analysis.sentiment) : analysis.sentiment;
-          if (sentiment.positive || sentiment.neutral || sentiment.negative) {
-            btmHtml += '<div class="ak-sentiment">';
-            if (sentiment.positive) btmHtml += '<span class="ak-sentiment-item" style="background:rgba(0,184,148,0.1);color:#00b894">\u2705 %' + sentiment.positive + ' Olumlu</span>';
-            if (sentiment.neutral) btmHtml += '<span class="ak-sentiment-item" style="background:rgba(108,92,231,0.1);color:#6c5ce7">\u2796 %' + sentiment.neutral + ' Notr</span>';
-            if (sentiment.negative) btmHtml += '<span class="ak-sentiment-item" style="background:rgba(214,48,49,0.1);color:#d63031">\u274C %' + sentiment.negative + ' Olumsuz</span>';
-            btmHtml += '</div>';
+      // En Faydalı Yorum (longest high-rated review)
+      if (hasReviews) {
+        var bestReview = null;
+        for (var br = 0; br < reviews.length; br++) {
+          var rv = reviews[br];
+          var content = rv.content || '';
+          var rvRating = rv.rating || 5;
+          if (rvRating >= 4 && content.length > 30) {
+            if (!bestReview || content.length > (bestReview.content || '').length) {
+              bestReview = rv;
+            }
           }
-        } catch(e) {}
+        }
+        if (bestReview) {
+          btmHtml += '<div class="ak-ai">';
+          btmHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+          btmHtml += '<strong>\u2B50 En Faydali Yorum</strong>';
+          btmHtml += '<span class="ak-review-stars">' + starHtml(bestReview.rating || 5) + '</span>';
+          btmHtml += '</div>';
+          btmHtml += '<div style="font-style:italic">"' + escHtml((bestReview.content || '').substring(0, 300)) + '"</div>';
+          btmHtml += '<div style="margin-top:6px;font-size:12px;opacity:0.6">' + escHtml(bestReview.author || '') + (bestReview.review_date ? ' - ' + escHtml(bestReview.review_date) : '') + '</div>';
+          btmHtml += '</div>';
+        }
       }
 
       // Tabs: Reviews + Q&A
