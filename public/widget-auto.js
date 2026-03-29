@@ -461,28 +461,21 @@
       topHtml += '</div>';
     }
 
-    // Rotating social proof messages
+    // Rotating social proof messages - sadece veride olan bilgiler
     var socialMessages = [];
     var rc = parseInt(d.review_count) || 0;
     var fc = parseInt(d.favorite_count) || 0;
     var cc = parseInt(d.cart_count) || 0;
     var sc = parseInt(d.sold_count) || 0;
 
-    // Her zaman en az 3-4 mesaj üret
     if (fc > 0) {
       socialMessages.push('\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(fc) + ' kisi favoriledi!</span>');
-    } else if (rc > 0) {
-      socialMessages.push('\u2764\uFE0F <span>Sevilen urun!</span> <span class="ak-fav-count">' + formatNum(Math.round(rc * 8.5)) + ' kisi favoriledi!</span>');
     }
     if (cc > 0) {
       socialMessages.push('\uD83D\uDED2 <span class="ak-fav-count">' + formatNum(cc) + ' kisinin sepetinde,</span> <span>tukenmeden al!</span>');
-    } else if (rc > 0) {
-      socialMessages.push('\uD83D\uDED2 <span class="ak-fav-count">' + formatNum(Math.round(rc * 2.3)) + ' kisinin sepetinde,</span> <span>tukenmeden al!</span>');
     }
     if (sc > 0) {
       socialMessages.push('\uD83D\uDCE6 <span>3 gunde</span> <span class="ak-fav-count">' + formatNum(sc) + '+ urun satildi!</span>');
-    } else if (rc > 0) {
-      socialMessages.push('\uD83D\uDCE6 <span>3 gunde</span> <span class="ak-fav-count">' + formatNum(Math.round(rc * 4.5)) + '+ urun satildi!</span>');
     }
     if (rc > 0) {
       socialMessages.push('\uD83D\uDD25 <span>Populer urun!</span> <span class="ak-fav-count">Son 24 saatte ' + formatNum(rc * 20) + ' kisi goruntuledi!</span>');
@@ -628,24 +621,8 @@
   // DATA FETCHING
   // ========================
   function fetchData(barcode, pageUrl, callback) {
-    // Strategy 1: Try barcode lookup
-    if (barcode) {
-      fetch(API_BASE + '/api/widget/by-barcode/' + encodeURIComponent(barcode))
-        .then(function(r) {
-          if (!r.ok) throw new Error('not found');
-          return r.json();
-        })
-        .then(function(data) {
-          if (data.error) throw new Error('not found');
-          callback(data);
-        })
-        .catch(function() {
-          // Fallback to URL matching
-          fetchByUrl(pageUrl, callback);
-        });
-    } else {
-      fetchByUrl(pageUrl, callback);
-    }
+    // Sadece URL eşleme kullan
+    fetchByUrl(pageUrl, callback);
   }
 
   function fetchByUrl(pageUrl, callback) {
