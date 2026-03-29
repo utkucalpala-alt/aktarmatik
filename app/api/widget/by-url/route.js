@@ -70,7 +70,7 @@ export async function GET(request) {
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('Widget by-url API error:', error);
-    return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500, headers: corsHeaders });
+    return NextResponse.json({ error: 'Sunucu hatası', detail: error.message }, { status: 500, headers: corsHeaders });
   }
 }
 
