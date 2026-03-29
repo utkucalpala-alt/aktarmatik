@@ -8,9 +8,11 @@ export default function BarkodlarPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [newBarcode, setNewBarcode] = useState('');
   const [newUrl, setNewUrl] = useState('');
+  const [newSiteUrl, setNewSiteUrl] = useState('');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
   const [scraping, setScraping] = useState({});
+  const [editingSiteUrl, setEditingSiteUrl] = useState({});
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('tp_token') : '';
 
@@ -53,7 +55,7 @@ export default function BarkodlarPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ barcode: newBarcode, productUrl: newUrl }),
+        body: JSON.stringify({ barcode: newBarcode, productUrl: newUrl, siteUrl: newSiteUrl }),
       });
 
       const data = await res.json();
@@ -65,6 +67,7 @@ export default function BarkodlarPage() {
 
       setNewBarcode('');
       setNewUrl('');
+      setNewSiteUrl('');
       setShowAdd(false);
       loadBarcodes();
     } catch (err) {
@@ -80,6 +83,24 @@ export default function BarkodlarPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      loadBarcodes();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleSaveSiteUrl(id) {
+    const url = editingSiteUrl[id];
+    try {
+      await fetch('/api/barcodes', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id, siteUrl: url }),
+      });
+      setEditingSiteUrl(prev => { const n = {...prev}; delete n[id]; return n; });
       loadBarcodes();
     } catch (err) {
       console.error(err);
@@ -133,8 +154,20 @@ export default function BarkodlarPage() {
                   required
                 />
               </div>
-              <div className="form-group" style={{ flex: 2 }}>
-                <label className="form-label">Trendyol Ürün Linki (opsiyonel)</label>
+            </div>
+            <div className="add-fields" style={{ marginTop: 12 }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">🌐 Site Ürün Linki (ikas, Shopify vb.)</label>
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://softtoplus.com/urun-adi"
+                  value={newSiteUrl}
+                  onChange={e => setNewSiteUrl(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">🟠 Trendyol Ürün Linki</label>
                 <input
                   type="url"
                   className="form-input"
@@ -143,8 +176,10 @@ export default function BarkodlarPage() {
                   onChange={e => setNewUrl(e.target.value)}
                 />
               </div>
-              <button type="submit" className="btn btn-primary" disabled={addLoading} style={{ alignSelf: 'flex-end' }}>
-                {addLoading ? 'Ekleniyor...' : 'Ekle'}
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <button type="submit" className="btn btn-primary" disabled={addLoading}>
+                {addLoading ? 'Ekleniyor...' : '+ Ekle'}
               </button>
             </div>
           </form>
@@ -178,6 +213,32 @@ export default function BarkodlarPage() {
                     {b.last_scraped_at && <span>Son: {new Date(b.last_scraped_at).toLocaleDateString('tr-TR')}</span>}
                   </div>
                 </Link>
+                {editingSiteUrl.hasOwnProperty(b.id) ? (
+                  <div className="site-url-edit" style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <input
+                      type="url"
+                      className="form-input"
+                      style={{ fontSize: 12, padding: '4px 8px', flex: 1 }}
+                      placeholder="https://softtoplus.com/urun-adi"
+                      value={editingSiteUrl[b.id] || ''}
+                      onChange={e => setEditingSiteUrl(prev => ({...prev, [b.id]: e.target.value}))}
+                    />
+                    <button className="btn btn-primary btn-sm" onClick={() => handleSaveSiteUrl(b.id)}>💾</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setEditingSiteUrl(prev => { const n = {...prev}; delete n[b.id]; return n; })}>✕</button>
+                  </div>
+                ) : (
+                  <div className="barcode-meta" style={{ marginTop: 4 }}>
+                    {b.site_url ? (
+                      <span>🌐 <a href={b.site_url} target="_blank" rel="noopener" style={{ color: 'var(--primary)', fontSize: 12 }}>{b.site_url.replace(/^https?:\/\//, '').substring(0, 40)}...</a></span>
+                    ) : null}
+                    <button
+                      style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 11, padding: 0 }}
+                      onClick={() => setEditingSiteUrl(prev => ({...prev, [b.id]: b.site_url || ''}))}
+                    >
+                      {b.site_url ? '✏️ Düzenle' : '🔗 Site Linki Ekle'}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="barcode-stats">
                 {b.rating && <span className="badge badge-success">⭐ {parseFloat(b.rating).toFixed(1)}</span>}

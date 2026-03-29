@@ -38,7 +38,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 });
     }
 
-    const { barcode, productUrl } = await request.json();
+    const { barcode, productUrl, siteUrl } = await request.json();
     if (!barcode) {
       return NextResponse.json({ error: 'Barkod gerekli' }, { status: 400 });
     }
@@ -53,8 +53,8 @@ export async function POST(request) {
     }
 
     const result = await query(
-      'INSERT INTO tp_barcodes (user_id, barcode, product_url) VALUES ($1, $2, $3) RETURNING *',
-      [user.id, barcode, productUrl || null]
+      'INSERT INTO tp_barcodes (user_id, barcode, product_url, site_url) VALUES ($1, $2, $3, $4) RETURNING *',
+      [user.id, barcode, productUrl || null, siteUrl || null]
     );
 
     // Also create a default widget
@@ -67,6 +67,31 @@ export async function POST(request) {
     return NextResponse.json({ barcode: result.rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Barcodes POST error:', error);
+    return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+  }
+}
+
+// PATCH /api/barcodes - update barcode site_url
+export async function PATCH(request) {
+  try {
+    const user = getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 });
+    }
+
+    const { id, siteUrl } = await request.json();
+    if (!id) {
+      return NextResponse.json({ error: 'ID gerekli' }, { status: 400 });
+    }
+
+    await query(
+      'UPDATE tp_barcodes SET site_url = $1 WHERE id = $2 AND user_id = $3',
+      [siteUrl || null, id, user.id]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Barcodes PATCH error:', error);
     return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
   }
 }

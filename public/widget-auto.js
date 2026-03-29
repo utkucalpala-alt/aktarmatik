@@ -35,9 +35,9 @@
     return null;
   }
 
-  // Only run on product pages
+  // Only run on product pages - detect barcode or use URL matching
   var barcode = detectBarcode();
-  if (!barcode) return;
+  var pageUrl = window.location.href.split('?')[0];
 
   var isDark = theme === 'dark';
   var isNative = theme === 'native';
@@ -46,7 +46,10 @@
   var border = isNative ? 'rgba(0,0,0,0.08)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)');
   var cardBg = isNative ? 'transparent' : (isDark ? 'rgba(26,27,58,0.8)' : 'rgba(248,249,250,0.9)');
 
-  var cid = 'aktarmatik-widget-' + barcode.substring(0, 8);
+  // Need either barcode or a product page URL to work
+  if (!barcode && !document.querySelector('script[type="application/ld+json"]')) return;
+
+  var cid = 'aktarmatik-widget-' + (barcode ? barcode.substring(0, 8) : pageUrl.replace(/\W/g,'').substring(0, 12));
 
   var css = '\n' +
     '#' + cid + ' * { box-sizing: border-box; margin: 0; padding: 0; font-family: inherit; }\n' +
@@ -228,20 +231,39 @@
     return div.innerHTML;
   }
 
-  // Load data
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      insertWidget();
-      fetch(apiBase + '/api/widget/by-barcode/' + encodeURIComponent(barcode))
-        .then(function(r) { return r.json(); })
-        .then(render)
-        .catch(function() { container.innerHTML = ''; });
-    });
-  } else {
+  // Load data - try barcode first, then URL matching
+  function loadData() {
     insertWidget();
-    fetch(apiBase + '/api/widget/by-barcode/' + encodeURIComponent(barcode))
-      .then(function(r) { return r.json(); })
-      .then(render)
-      .catch(function() { container.innerHTML = ''; });
+
+    function tryBarcode() {
+      if (!barcode) return tryUrl();
+      fetch(apiBase + '/api/widget/by-barcode/' + encodeURIComponent(barcode))
+        .then(function(r) {
+          if (!r.ok) return tryUrl();
+          return r.json().then(function(data) {
+            if (data.error) return tryUrl();
+            render(data);
+          });
+        })
+        .catch(function() { tryUrl(); });
+    }
+
+    function tryUrl() {
+      fetch(apiBase + '/api/widget/by-url?url=' + encodeURIComponent(pageUrl))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) { container.innerHTML = ''; return; }
+          render(data);
+        })
+        .catch(function() { container.innerHTML = ''; });
+    }
+
+    tryBarcode();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadData);
+  } else {
+    loadData();
   }
 })();
