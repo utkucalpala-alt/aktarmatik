@@ -39,22 +39,27 @@ export async function POST(request) {
     }
 
     const { barcode, productUrl, siteUrl } = await request.json();
-    if (!barcode) {
-      return NextResponse.json({ error: 'Barkod gerekli' }, { status: 400 });
+    if (!productUrl && !siteUrl) {
+      return NextResponse.json({ error: 'Trendyol linki ve site linki gerekli' }, { status: 400 });
     }
 
-    // Check duplicate
-    const existing = await query(
-      'SELECT id FROM tp_barcodes WHERE user_id = $1 AND barcode = $2',
-      [user.id, barcode]
-    );
-    if (existing.rows.length > 0) {
-      return NextResponse.json({ error: 'Bu barkod zaten ekli' }, { status: 409 });
+    // Generate a unique identifier from URL if no barcode provided
+    const barcodeValue = barcode || crypto.randomBytes(8).toString('hex');
+
+    // Check duplicate by site_url
+    if (siteUrl) {
+      const existing = await query(
+        'SELECT id FROM tp_barcodes WHERE user_id = $1 AND site_url = $2',
+        [user.id, siteUrl]
+      );
+      if (existing.rows.length > 0) {
+        return NextResponse.json({ error: 'Bu site linki zaten ekli' }, { status: 409 });
+      }
     }
 
     const result = await query(
       'INSERT INTO tp_barcodes (user_id, barcode, product_url, site_url) VALUES ($1, $2, $3, $4) RETURNING *',
-      [user.id, barcode, productUrl || null, siteUrl || null]
+      [user.id, barcodeValue, productUrl || null, siteUrl || null]
     );
 
     // Also create a default widget

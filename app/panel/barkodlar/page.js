@@ -6,7 +6,6 @@ export default function BarkodlarPage() {
   const [barcodes, setBarcodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [newBarcode, setNewBarcode] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newSiteUrl, setNewSiteUrl] = useState('');
   const [addError, setAddError] = useState('');
@@ -55,7 +54,7 @@ export default function BarkodlarPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ barcode: newBarcode, productUrl: newUrl, siteUrl: newSiteUrl }),
+        body: JSON.stringify({ productUrl: newUrl, siteUrl: newSiteUrl }),
       });
 
       const data = await res.json();
@@ -65,7 +64,6 @@ export default function BarkodlarPage() {
         return;
       }
 
-      setNewBarcode('');
       setNewUrl('');
       setNewSiteUrl('');
       setShowAdd(false);
@@ -129,43 +127,20 @@ export default function BarkodlarPage() {
     <div className="panel-content">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Barkodlar</h1>
-          <p className="page-desc">Takip ettiğiniz Trendyol ürünleri.</p>
+          <h1 className="page-title">URL Eşleme</h1>
+          <p className="page-desc">Trendyol ürünlerini sitenizle eşleştirin.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowAdd(!showAdd)}>
-          {showAdd ? '✕ İptal' : '+ Barkod Ekle'}
+          {showAdd ? '✕ İptal' : '+ Eşleme Ekle'}
         </button>
       </div>
 
       {showAdd && (
         <div className="glass-card add-form fade-in">
-          <h3>Yeni Barkod Ekle</h3>
+          <h3>Yeni Eşleme Ekle</h3>
           {addError && <div className="add-error">{addError}</div>}
           <form onSubmit={handleAdd}>
             <div className="add-fields">
-              <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label">Barkod / Ürün ID</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Örn: 123456789"
-                  value={newBarcode}
-                  onChange={e => setNewBarcode(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div className="add-fields" style={{ marginTop: 12 }}>
-              <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label">🌐 Site Ürün Linki (ikas, Shopify vb.)</label>
-                <input
-                  type="url"
-                  className="form-input"
-                  placeholder="https://softtoplus.com/urun-adi"
-                  value={newSiteUrl}
-                  onChange={e => setNewSiteUrl(e.target.value)}
-                />
-              </div>
               <div className="form-group" style={{ flex: 1 }}>
                 <label className="form-label">🟠 Trendyol Ürün Linki</label>
                 <input
@@ -174,6 +149,18 @@ export default function BarkodlarPage() {
                   placeholder="https://www.trendyol.com/..."
                   value={newUrl}
                   onChange={e => setNewUrl(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">🌐 Site Ürün Linki (ikas, Shopify vb.)</label>
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://softtoplus.com/urun-adi"
+                  value={newSiteUrl}
+                  onChange={e => setNewSiteUrl(e.target.value)}
+                  required
                 />
               </div>
             </div>
@@ -197,9 +184,9 @@ export default function BarkodlarPage() {
         </div>
       ) : barcodes.length === 0 ? (
         <div className="glass-card empty-state fade-in">
-          <div className="empty-icon">📦</div>
-          <h3>Henüz barkod eklenmemiş</h3>
-          <p>Yukarıdaki butonu kullanarak ilk barkodunuzu ekleyin.</p>
+          <div className="empty-icon">🔗</div>
+          <h3>Henüz eşleme eklenmemiş</h3>
+          <p>Yukarıdaki butonu kullanarak ilk eşlemenizi ekleyin.</p>
         </div>
       ) : (
         <div className="barcodes-list">
@@ -207,9 +194,8 @@ export default function BarkodlarPage() {
             <div key={b.id} className="glass-card barcode-row fade-in" style={{ animationDelay: `${i * 0.04}s` }}>
               <div className="barcode-main">
                 <Link href={`/panel/urun/${b.id}`} className="barcode-link">
-                  <div className="barcode-name">{b.product_name || `Barkod: ${b.barcode}`}</div>
+                  <div className="barcode-name">{b.product_name || 'Ürün adı bekleniyor...'}</div>
                   <div className="barcode-meta">
-                    <span>#{b.barcode}</span>
                     {b.last_scraped_at && <span>Son: {new Date(b.last_scraped_at).toLocaleDateString('tr-TR')}</span>}
                   </div>
                 </Link>
