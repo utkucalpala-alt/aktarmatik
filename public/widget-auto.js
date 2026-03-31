@@ -101,6 +101,13 @@
       C + ' .ak-loading { text-align: center; padding: 16px; opacity: 0.5; font-size: 13px; }',
       C + ' .ak-rotating { transition: opacity 0.4s ease; }',
       C + ' .ak-rotating.ak-fade { opacity: 0; }',
+
+      /* Card badges (listing pages) */
+      '.ak-card-badge { display: flex; align-items: center; gap: 6px; padding: 8px 0; margin: 4px 0; flex-wrap: wrap; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1; width: 100%; }',
+      '.ak-card-badge .ak-card-stars { color: #FF6000; font-size: 16px; letter-spacing: 1px; }',
+      '.ak-card-badge .ak-card-rating { font-weight: 800; font-size: 17px; color: #FF6000; }',
+      '.ak-card-badge .ak-card-count { color: #777; font-size: 14px; font-weight: 500; }',
+      '.ak-card-badge .ak-card-popular { color: #FF6000; font-size: 14px; font-weight: 700; flex-basis: 100%; margin-top: 5px; display: flex; align-items: center; gap: 4px; }',
     ].join('\n');
 
     var styleEl = document.createElement('style');
@@ -640,6 +647,167 @@
   }
 
   // ========================
+  // LISTING PAGE CARD BADGES
+  // ========================
+  function findListingCards() {
+    var results = [];
+    var seen = {};
+
+    // Strategy 1: ikas — card is <a class="grid"> containing .product-list-item
+    // Walk up from .product-list-item to find the <a> ancestor
+    var ikasItems = document.querySelectorAll('.product-list-item, .product-container');
+    if (ikasItems.length >= 2) {
+      for (var ii = 0; ii < ikasItems.length; ii++) {
+        var item = ikasItems[ii];
+        var anchor = item.closest('a[href]');
+        if (!anchor) continue;
+        var url = anchor.href;
+        if (!url || seen[url]) continue;
+        var path = url.replace(/^https?:\/\/[^/]+/, '').replace(/\/$/, '');
+        if (!path || path === '' || path.split('/').length > 3) continue;
+        seen[url] = true;
+        results.push({ cardEl: anchor, productUrl: url, infoEl: item });
+      }
+    }
+
+    // Strategy 2: Generic product card selectors
+    if (results.length < 2) {
+      var cardSelectors = [
+        { container: 'a.product-card', link: null },
+        { container: 'a[class*="product-card"]', link: null },
+        { container: '.product-card', link: 'a[href]' },
+        { container: '[class*="productCard"]', link: 'a[href]' },
+        { container: '[class*="product-item"]', link: 'a[href]' },
+      ];
+      for (var si = 0; si < cardSelectors.length; si++) {
+        try {
+          var sel = cardSelectors[si];
+          var containers = document.querySelectorAll(sel.container);
+          if (containers.length < 2) continue;
+          for (var ei = 0; ei < containers.length; ei++) {
+            var cardEl2 = containers[ei];
+            var linkEl = sel.link ? cardEl2.querySelector(sel.link) : cardEl2;
+            if (!linkEl) continue;
+            var url2 = linkEl.href || linkEl.getAttribute('href');
+            if (!url2 || seen[url2]) continue;
+            if (url2.indexOf(window.location.hostname) === -1 && url2.indexOf('http') === 0) continue;
+            var path2 = url2.replace(/^https?:\/\/[^/]+/, '');
+            if (!path2 || path2 === '/' || path2.indexOf('.') !== -1) continue;
+            seen[url2] = true;
+            results.push({ cardEl: cardEl2, productUrl: url2 });
+          }
+          if (results.length >= 2) break;
+        } catch(e) {}
+      }
+    }
+
+    return results;
+  }
+
+  function findCardInsertionPoint(cardEl) {
+    // ikas: inject into .product-list-item-info, after .add-to-cart-overlay
+    var infoEl = cardEl.querySelector('.product-list-item-info, [class*="product-list-item-info"]');
+    if (infoEl) {
+      var overlay = infoEl.querySelector('.add-to-cart-overlay');
+      return overlay
+        ? { parent: overlay.parentNode, ref: overlay }  // overlay'in gerçek parent'ına ekle
+        : { parent: infoEl, ref: null };
+    }
+    // Generic: try after price element
+    var priceEl = cardEl.querySelector('[class*="price"],[class*="Price"],[class*="fiyat"]');
+    if (priceEl) return { parent: priceEl.parentNode, ref: priceEl.nextSibling };
+    var genericInfo = cardEl.querySelector('[class*="information"],[class*="detail"],[class*="info"]');
+    if (genericInfo) return { parent: genericInfo, ref: null };
+    return { parent: cardEl, ref: null };
+  }
+
+  function renderCardBadge(cardEl, data) {
+    var existing = cardEl.querySelector('.ak-card-badge');
+    if (existing) existing.remove();
+
+    if (!data || !data.data || !data.data.rating) return;
+
+    var d = data.data;
+    var rating = parseFloat(d.rating);
+    var reviewCount = parseInt(d.review_count) || 0;
+    var favCount = parseInt(d.favorite_count) || 0;
+    var cartCount = parseInt(d.cart_count) || 0;
+    var soldCount = parseInt(d.sold_count) || 0;
+
+    var badge = document.createElement('div');
+    badge.className = 'ak-card-badge';
+
+    // Yıldız + puan + yorum sayısı
+    var html = '<span class="ak-card-stars">' + starHtml(rating) + '</span>';
+    html += '<span class="ak-card-rating">' + rating.toFixed(1) + '</span>';
+    if (reviewCount > 0) {
+      html += '<span class="ak-card-count">(' + formatNum(reviewCount) + ' yorum)</span>';
+    }
+
+    badge.innerHTML = html;
+
+    // Dönen sosyal kanıt mesajları (turuncu)
+    var socialMessages = [];
+    if (favCount > 0) socialMessages.push('\u2764\uFE0F <strong>' + formatNum(favCount) + ' ki\u015fi</strong> favoriledi');
+    if (cartCount > 0) socialMessages.push('\uD83D\uDED2 <strong>' + formatNum(cartCount) + '</strong> ki\u015finin sepetinde');
+    if (soldCount > 0) socialMessages.push('\uD83D\uDCE6 <strong>' + formatNum(soldCount) + '+</strong> adet sat\u0131ld\u0131');
+
+    if (socialMessages.length > 0) {
+      var socialEl = document.createElement('span');
+      socialEl.className = 'ak-card-popular ak-rotating';
+      socialEl.innerHTML = socialMessages[0];
+      badge.appendChild(socialEl);
+
+      if (socialMessages.length > 1) {
+        (function(el, msgs) {
+          var idx = 0;
+          setInterval(function() {
+            if (!el || !document.contains(el)) return;
+            el.classList.add('ak-fade');
+            setTimeout(function() {
+              idx = (idx + 1) % msgs.length;
+              el.innerHTML = msgs[idx];
+              el.classList.remove('ak-fade');
+            }, 400);
+          }, 3500);
+        })(socialEl, socialMessages);
+      }
+    }
+
+    var point = findCardInsertionPoint(cardEl);
+    if (point.ref) {
+      point.parent.insertBefore(badge, point.ref);
+    } else {
+      point.parent.appendChild(badge);
+    }
+  }
+
+  function initListingMode() {
+    // Prevent double-run on same page
+    if (document.getElementById('ak-listing-active')) return;
+    var cards = findListingCards();
+    if (cards.length === 0) return;
+
+    var marker = document.createElement('span');
+    marker.id = 'ak-listing-active';
+    marker.style.display = 'none';
+    document.body.appendChild(marker);
+
+    // Process cards sequentially with small delay to avoid request flood
+    var index = 0;
+    function processNext() {
+      if (index >= cards.length) return;
+      var card = cards[index++];
+      if (card.cardEl.querySelector('.ak-card-badge')) { processNext(); return; }
+      fetchByUrl(card.productUrl, function(data) {
+        if (data) renderCardBadge(card.cardEl, data);
+        setTimeout(processNext, 80);
+      });
+    }
+    processNext();
+  }
+
+  // ========================
   // MAIN INITIALIZATION
   // ========================
   function init() {
@@ -652,23 +820,26 @@
     if (isLoading) return;
 
     currentUrl = newUrl;
-    currentBarcode = null;
+
+    // Reset listing marker on URL change
+    var listingMarker = document.getElementById('ak-listing-active');
+    if (listingMarker) listingMarker.remove();
 
     // Wait for dynamic content to be available (ikas renders async)
     waitForProductData(function() {
       if (!isProductPage()) {
         cleanup();
+        // Try listing mode — cards may need a moment to render
+        setTimeout(initListingMode, 500);
         return;
       }
 
-      var barcode = detectBarcode();
-      currentBarcode = barcode;
       isLoading = true;
 
       var containers = insertContainer();
       if (!containers || !containers.top) { isLoading = false; return; }
 
-      fetchData(barcode, currentUrl, function(data) {
+      fetchData(null, currentUrl, function(data) {
         isLoading = false;
         if (data) {
           render(containers, data);
