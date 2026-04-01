@@ -187,8 +187,11 @@ export async function POST(request) {
         const safeUser = String(q.user_name || q.userName || q.user_full_name || q.userFullName || 'Müşteri').substring(0, 250);
         const qText = String(q.question_text || q.questionText || q.text || q.question || '').substring(0, 2000);
 
-        // Skip junk/system messages
+        // Skip junk/system messages + product name appearing as question
         if (qText.length < 4 || isJunkQ(qText)) continue;
+        if (safeProductName && qText.toLowerCase().includes(safeProductName.toLowerCase().substring(0, 20))) continue;
+        if (qText.match(/^\d+(\.\d+)?\s*TL$/i)) continue;
+        if (qText === aText) continue; // question same as answer = garbage
 
         let aText = '';
         if (q.answer_text) aText = q.answer_text;
