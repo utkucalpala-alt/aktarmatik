@@ -35,16 +35,25 @@ export async function GET(request, { params }) {
       [id]
     );
 
-    // Get reviews — pinned first, then newest, include edit/hide status
-    const reviews = await query(
-      `SELECT id, barcode_id, author, rating, content, review_date, helpful_count, scraped_at,
-              COALESCE(is_hidden, false) as is_hidden,
-              edited_content,
-              COALESCE(is_pinned, false) as is_pinned
-       FROM tp_reviews WHERE barcode_id = $1
-       ORDER BY COALESCE(is_pinned, false) DESC, scraped_at DESC LIMIT 50`,
-      [id]
-    );
+    // Get reviews — try with new columns, fallback to basic query
+    let reviews;
+    try {
+      reviews = await query(
+        `SELECT id, barcode_id, author, rating, content, review_date, helpful_count, scraped_at,
+                COALESCE(is_hidden, false) as is_hidden,
+                edited_content,
+                COALESCE(is_pinned, false) as is_pinned
+         FROM tp_reviews WHERE barcode_id = $1
+         ORDER BY COALESCE(is_pinned, false) DESC, scraped_at DESC LIMIT 50`,
+        [id]
+      );
+    } catch (e) {
+      // Columns don't exist yet — use basic query
+      reviews = await query(
+        'SELECT id, barcode_id, author, rating, content, review_date, helpful_count, scraped_at, false as is_hidden, null as edited_content, false as is_pinned FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 50',
+        [id]
+      );
+    }
 
     // Get questions
     let questions = { rows: [] };
