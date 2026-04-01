@@ -41,12 +41,7 @@ export async function GET(request) {
       [bc.id]
     );
 
-    let reviews;
-    try {
-      reviews = await query('SELECT author, rating, COALESCE(edited_content, content) as content, review_date FROM tp_reviews WHERE barcode_id = $1 AND COALESCE(is_hidden, false) = false ORDER BY COALESCE(is_pinned, false) DESC, scraped_at DESC LIMIT 10', [bc.id]);
-    } catch (e) {
-      reviews = await query('SELECT author, rating, content, review_date FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 10', [bc.id]);
-    }
+    const reviews = await query('SELECT author, rating, content, review_date FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 10', [bc.id]);
 
     const questions = await query(
       'SELECT user_name, question_text, answer_text, question_date FROM tp_questions WHERE barcode_id = $1 ORDER BY id DESC LIMIT 10',
