@@ -5,27 +5,47 @@ import { getUserFromRequest } from '@/lib/auth';
 const MAX_QNA = 15;
 const MAX_REVIEWS = 15;
 
-// Fetch Q&A directly via HTTP (no browser needed) — fallback when scraper fails
+// Fetch Q&A via Browserless /content endpoint — renders JS, bypasses Cloudflare
 async function fetchQnADirect(productUrl, maxQna = MAX_QNA) {
+  const BROWSERLESS_HOST = process.env.BROWSERLESS_HOST || 'http://188.132.225.198';
+  const BROWSERLESS_PORT = process.env.BROWSERLESS_PORT || '4000';
+  const BROWSERLESS_TOKEN = process.env.BROWSERLESS_TOKEN || 'ygyjmumydei08glg';
+
   try {
     const baseUrl = productUrl.split('?')[0].replace(/\/(yorumlar|sorular|soru-cevap|saticiya-sor)(\/.*)?$/, '');
     const qnaUrl = baseUrl + '/saticiya-sor';
-    console.log(`[Q&A Direct] Fetching: ${qnaUrl}`);
+    const endpoint = `${BROWSERLESS_HOST}:${BROWSERLESS_PORT}/content?token=${BROWSERLESS_TOKEN}`;
+    console.log(`[Q&A Browserless] Fetching: ${qnaUrl}`);
 
-    const res = await fetch(qnaUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept-Language': 'tr-TR,tr;q=0.9',
-      },
-      signal: AbortSignal.timeout(15000),
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: qnaUrl, gotoOptions: { waitUntil: 'networkidle2' }, waitForTimeout: 5000 }),
+      signal: AbortSignal.timeout(45000),
     });
-    if (!res.ok) return [];
-    const html = await res.text();
+
+    if (!res.ok) {
+      console.log(`[Q&A Browserless] Error: ${res.status}`);
+      // Fallback to direct HTTP
+      const directRes = await fetch(qnaUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36', 'Accept-Language': 'tr-TR,tr;q=0.9' },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!directRes.ok) return [];
+      var html = await directRes.text();
+    } else {
+      var html = await res.text();
+    }
+
+    console.log(`[Q&A Browserless] Got ${(html.length / 1024).toFixed(0)}KB HTML`);
 
     // Extract Q&A pairs from embedded JSON in HTML
     const qaPairs = [...html.matchAll(/"text":"([^"]{3,500})","userName":"([^"]*)","answeredDateMessage":"([^"]*)","sellerName":"([^"]*)"[^}]*?"answer":\{[^}]*"text":"([^"]*)"/g)];
 
-    if (qaPairs.length === 0) return [];
+    if (qaPairs.length === 0) {
+      console.log(`[Q&A Browserless] No Q&A pairs found in HTML`);
+      return [];
+    }
 
     const questions = qaPairs.slice(0, maxQna).map(m => ({
       questionText: (m[1] || '').replace(/\\n/g, ' ').replace(/\\u002F/g, '/').replace(/\\"/g, '"'),
@@ -34,10 +54,10 @@ async function fetchQnADirect(productUrl, maxQna = MAX_QNA) {
       date: '',
     })).filter(q => q.questionText.length > 3);
 
-    console.log(`[Q&A Direct] Found ${questions.length} questions`);
+    console.log(`[Q&A Browserless] Found ${questions.length} questions`);
     return questions;
   } catch (e) {
-    console.log(`[Q&A Direct] Error: ${e.message}`);
+    console.log(`[Q&A Browserless] Error: ${e.message}`);
     return [];
   }
 }
