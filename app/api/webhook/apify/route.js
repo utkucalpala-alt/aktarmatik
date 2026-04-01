@@ -180,34 +180,8 @@ export async function POST(request) {
           }
         }
 
-        // Filter junk: system messages, form text, product names
-        const isJunk = qText.length < 5 || qText.length > 500
-          || /farklı ürüne ait olan/i.test(qText)
-          || /reklam içeren/i.test(qText)
-          || /müstehcen içerikli/i.test(qText)
-          || /yasal olmayan içerik/i.test(qText)
-          || /şikayet et.*butonu/i.test(qText)
-          || /işleminizi gerçekleştiremedik/i.test(qText)
-          || /hata meydana geldi/i.test(qText)
-          || /sorunuzu satıcımıza ilettik/i.test(qText)
-          || /alışverişe devam et/i.test(qText)
-          || /sağlık beyanı veya tıbbi/i.test(qText)
-          || /hukuka aykırı reklam/i.test(qText)
-          || /maalesef yayınlayamıyoruz/i.test(qText)
-          || /soru yayınlama kriterleri/i.test(qText)
-          || /ad soyad bilgimin gözükmesine/i.test(qText)
-          || /aydınlatma metnine ulaşmak/i.test(qText)
-          || /lütfen daha sonra/i.test(qText)
-          || /kullanıcı sözleşmesi/i.test(qText)
-          || /yayınlama kriterlerimiz/i.test(qText)
-          || /tüm ürün soru ve cevapları/i.test(qText)
-          || /önerilen sıralama/i.test(qText)
-          || /satıcıya sor/i.test(qText)
-          || /soru sor$/i.test(qText)
-          || /^\d+(\.\d+)?\s*TL$/i.test(qText)
-          || (safeProductName && qText.toLowerCase().includes(safeProductName.toLowerCase().substring(0, 15)));
-
-        if (!isJunk && qText.length > 3) {
+        // Only save questions that have an answer
+        if (qText.length > 3 && aText.length > 1) {
           await query(
             'INSERT INTO tp_questions (barcode_id, user_name, question_text, answer_text, question_date) VALUES ($1, $2, $3, $4, $5)',
             [barcodeId, safeUser, qText, aText, qDate]
