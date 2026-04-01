@@ -163,13 +163,33 @@ export async function POST(request) {
       }
     }
 
-    // Insert questions
+    // Insert questions — with junk text filter
+    const JUNK_Q_PATTERNS = [
+      /farklı ürüne ait olan/i, /reklam içeren/i, /müstehcen içerikli/i,
+      /yasal olmayan içerik/i, /şikayet et.*butonu/i, /işleminizi gerçekleştiremedik/i,
+      /hata meydana geldi/i, /tekrar deneyiniz/i, /sorunuzu satıcımıza ilettik/i,
+      /e-posta ile bilgilendirme/i, /alışverişe devam et/i, /sağlık beyanı veya tıbbi/i,
+      /hukuka aykırı reklam/i, /maalesef yayınlayamıyoruz/i, /soru yayınlama kriterleri/i,
+      /ad soyad bilgimin gözükmesine/i, /aydınlatma metnine ulaşmak/i,
+      /uygun olmadığını düşündüğünüz/i, /lütfen daha sonra/i, /işlem yapılırken/i,
+      /kullanıcı sözleşmesi/i, /yayınlama kriterlerimiz/i, /tüm ürün soru ve cevapları/i,
+      /önerilen sıralama/i, /geri dön/i, /satıcıya sor.*ürün özellikleri/i,
+    ];
+    function isJunkQ(text) {
+      if (!text || text.length < 5 || text.length > 500) return true;
+      return JUNK_Q_PATTERNS.some(p => p.test(text));
+    }
+
     if (allQuestions.length > 0) {
       await query('DELETE FROM tp_questions WHERE barcode_id = $1', [barcodeId]);
 
       for (const q of allQuestions) {
         const safeUser = String(q.user_name || q.userName || q.user_full_name || q.userFullName || 'Müşteri').substring(0, 250);
         const qText = String(q.question_text || q.questionText || q.text || q.question || '').substring(0, 2000);
+
+        // Skip junk/system messages
+        if (qText.length < 4 || isJunkQ(qText)) continue;
+
         let aText = '';
         if (q.answer_text) aText = q.answer_text;
         else if (q.answerText) aText = q.answerText;
@@ -181,15 +201,19 @@ export async function POST(request) {
         const rawDate = q.creation_date || q.creationDate || q.created_at || q.date;
         if (rawDate) {
           const ts = Number(rawDate);
-          qDate = ts > 1e12 ? new Date(ts).toLocaleDateString('tr-TR') : new Date(rawDate).toLocaleDateString('tr-TR');
+          if (ts > 1e12) {
+            qDate = new Date(ts).toLocaleDateString('tr-TR');
+          } else if (!isNaN(Date.parse(rawDate))) {
+            qDate = new Date(rawDate).toLocaleDateString('tr-TR');
+          } else {
+            qDate = '';
+          }
         }
 
-        if (qText.length > 3) {
-          await query(
-            'INSERT INTO tp_questions (barcode_id, user_name, question_text, answer_text, question_date) VALUES ($1, $2, $3, $4, $5)',
-            [barcodeId, safeUser, qText, aText, qDate]
-          );
-        }
+        await query(
+          'INSERT INTO tp_questions (barcode_id, user_name, question_text, answer_text, question_date) VALUES ($1, $2, $3, $4, $5)',
+          [barcodeId, safeUser, qText, aText, qDate]
+        );
       }
     }
 
