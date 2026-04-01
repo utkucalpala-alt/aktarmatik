@@ -42,7 +42,7 @@ export async function GET(request) {
     );
 
     const reviews = await query(
-      'SELECT author, rating, content, review_date FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 10',
+      'SELECT author, rating, COALESCE(edited_content, content) as content, review_date FROM tp_reviews WHERE barcode_id = $1 AND COALESCE(is_hidden, false) = false ORDER BY COALESCE(is_pinned, false) DESC, scraped_at DESC LIMIT 10',
       [bc.id]
     );
 
