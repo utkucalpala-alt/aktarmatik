@@ -5,14 +5,51 @@ import { getUserFromRequest } from '@/lib/auth';
 const MAX_QNA = 15;
 const MAX_REVIEWS = 15;
 
+// Fetch Q&A directly via HTTP (no browser needed) — fallback when scraper fails
+async function fetchQnADirect(productUrl, maxQna = MAX_QNA) {
+  try {
+    const baseUrl = productUrl.split('?')[0].replace(/\/(yorumlar|sorular|soru-cevap|saticiya-sor)(\/.*)?$/, '');
+    const qnaUrl = baseUrl + '/saticiya-sor';
+    console.log(`[Q&A Direct] Fetching: ${qnaUrl}`);
+
+    const res = await fetch(qnaUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept-Language': 'tr-TR,tr;q=0.9',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // Extract Q&A pairs from embedded JSON in HTML
+    const qaPairs = [...html.matchAll(/"text":"([^"]{3,500})","userName":"([^"]*)","answeredDateMessage":"([^"]*)","sellerName":"([^"]*)"[^}]*?"answer":\{[^}]*"text":"([^"]*)"/g)];
+
+    if (qaPairs.length === 0) return [];
+
+    const questions = qaPairs.slice(0, maxQna).map(m => ({
+      questionText: (m[1] || '').replace(/\\n/g, ' ').replace(/\\u002F/g, '/').replace(/\\"/g, '"'),
+      userName: m[2] || 'Müşteri',
+      answerText: m[5] ? `${m[4]}: ${(m[5] || '').replace(/\\n/g, ' ').replace(/\\u002F/g, '/').replace(/\\"/g, '"')}` : '',
+      date: '',
+    })).filter(q => q.questionText.length > 3);
+
+    console.log(`[Q&A Direct] Found ${questions.length} questions`);
+    return questions;
+  } catch (e) {
+    console.log(`[Q&A Direct] Error: ${e.message}`);
+    return [];
+  }
+}
+
 // Call our custom Dokploy scraper and forward data to webhook
 async function triggerCustomScraper(barcodeId, productUrl) {
   try {
     const scraperUrl = process.env.SCRAPER_URL || 'http://aktarmatik-aktarmatikscraper-zdkiey:4001/scrape';
     const scraperSecret = process.env.SCRAPER_SECRET || 'aktarmatik-scraper-secret';
-    
+
     console.log(`[Scrape] Calling custom scraper for barcode ${barcodeId} at ${scraperUrl}`);
-    
+
     const res = await fetch(scraperUrl, {
       method: 'POST',
       headers: {
@@ -28,9 +65,18 @@ async function triggerCustomScraper(barcodeId, productUrl) {
     }
 
     const scraperResponse = await res.json();
-    // Server returns { success: true, data: { product, reviews, questions } }
     const scrapedData = scraperResponse.data || scraperResponse;
-    console.log(`[Scrape] Custom scraper finished for ${barcodeId}, total reviews: ${scrapedData.reviews?.length || 0}`);
+    console.log(`[Scrape] Custom scraper finished for ${barcodeId}, reviews: ${scrapedData.reviews?.length || 0}, questions: ${scrapedData.questions?.length || 0}`);
+
+    // If scraper returned 0 questions, try direct HTTP fetch (much more reliable for Q&A)
+    if (!scrapedData.questions || scrapedData.questions.length === 0) {
+      console.log(`[Scrape] Scraper returned 0 Q&A, trying direct HTTP...`);
+      const directQuestions = await fetchQnADirect(productUrl);
+      if (directQuestions.length > 0) {
+        scrapedData.questions = directQuestions;
+        console.log(`[Scrape] Direct HTTP got ${directQuestions.length} Q&A`);
+      }
+    }
 
     // Process via webhook handler with new data structure
     const webhookRes = await fetch(process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook/apify` : 'https://aktarmatik.webtasarimi.net/api/webhook/apify', {
