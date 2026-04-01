@@ -8,7 +8,47 @@ export default function UrunDetayPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [scraping, setScraping] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [showHidden, setShowHidden] = useState(false);
   const token = typeof window !== 'undefined' ? localStorage.getItem('tp_token') : '';
+
+  // Review actions
+  async function updateReview(reviewId, updates) {
+    try {
+      await fetch(`/api/reviews/${reviewId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(updates),
+      });
+      await loadProduct();
+    } catch (err) { console.error(err); }
+  }
+
+  async function deleteReview(reviewId) {
+    if (!confirm('Bu yorumu kalıcı olarak silmek istiyor musunuz?')) return;
+    try {
+      await fetch(`/api/reviews/${reviewId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await loadProduct();
+    } catch (err) { console.error(err); }
+  }
+
+  function startEdit(review) {
+    setEditingReview(review.id);
+    setEditText(review.edited_content || review.content);
+  }
+
+  function saveEdit(reviewId) {
+    updateReview(reviewId, { edited_content: editText });
+    setEditingReview(null);
+  }
+
+  function cancelEdit() { setEditingReview(null); setEditText(''); }
+
+  function resetEdit(reviewId) { updateReview(reviewId, { edited_content: null }); }
 
   async function loadProduct() {
     try {
@@ -210,10 +250,33 @@ export default function UrunDetayPage({ params }) {
       {/* DATA TABLES: REVIEWS & QnA */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
         <div className="glass-card fade-in" style={{padding:24}}>
-          <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>💬 Son Yorumlar ({reviews?.length||0})</h2>
-          <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            {reviews?.slice(0,25).map((r,i) => (
-              <div key={i} style={{padding:16,background:'rgba(255,255,255,0.02)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-md)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+            <h2 style={{fontSize:16,fontWeight:700}}>💬 Yorumlar ({reviews?.filter(r => !r.is_hidden).length || 0})</h2>
+            <div style={{display:'flex',gap:8}}>
+              {reviews?.some(r => r.is_hidden) && (
+                <button onClick={() => setShowHidden(!showHidden)} style={{fontSize:11,padding:'4px 10px',background:showHidden?'rgba(108,92,231,0.2)':'rgba(255,255,255,0.05)',border:'1px solid var(--border-color)',borderRadius:4,color:'var(--text-secondary)',cursor:'pointer'}}>
+                  {showHidden ? '👁 Gizlileri Gizle' : `👁‍🗨 Gizli (${reviews.filter(r=>r.is_hidden).length})`}
+                </button>
+              )}
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:12,maxHeight:600,overflowY:'auto',paddingRight:8}}>
+            {reviews?.filter(r => showHidden || !r.is_hidden).map((r,i) => (
+              <div key={r.id || i} style={{
+                padding:16,
+                background: r.is_hidden ? 'rgba(225,112,85,0.05)' : r.is_pinned ? 'rgba(108,92,231,0.08)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${r.is_pinned ? 'var(--accent-primary)' : r.is_hidden ? 'rgba(225,112,85,0.3)' : 'var(--border-color)'}`,
+                borderRadius:'var(--radius-md)',
+                opacity: r.is_hidden ? 0.5 : 1,
+                position:'relative',
+              }}>
+                {/* Badges */}
+                <div style={{position:'absolute',top:8,right:8,display:'flex',gap:4}}>
+                  {r.is_pinned && <span style={{fontSize:10,padding:'2px 6px',background:'rgba(108,92,231,0.2)',color:'var(--accent-secondary)',borderRadius:4}}>📌 Sabit</span>}
+                  {r.is_hidden && <span style={{fontSize:10,padding:'2px 6px',background:'rgba(225,112,85,0.2)',color:'var(--danger)',borderRadius:4}}>🚫 Gizli</span>}
+                  {r.edited_content && <span style={{fontSize:10,padding:'2px 6px',background:'rgba(0,184,148,0.2)',color:'var(--success)',borderRadius:4}}>✏️ Düzenlenmiş</span>}
+                </div>
+
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,fontSize:13}}>
                   <span style={{fontWeight:600}}>{r.author}</span>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
@@ -221,7 +284,38 @@ export default function UrunDetayPage({ params }) {
                     {r.review_date && <span style={{color:'var(--text-muted)'}}>{r.review_date}</span>}
                   </div>
                 </div>
-                <p style={{fontSize:14,color:'var(--text-secondary)',lineHeight:1.6}}>{r.content}</p>
+
+                {/* Content — editable */}
+                {editingReview === r.id ? (
+                  <div>
+                    <textarea value={editText} onChange={e => setEditText(e.target.value)} style={{width:'100%',minHeight:80,padding:10,background:'rgba(255,255,255,0.05)',border:'1px solid var(--accent-primary)',borderRadius:6,color:'var(--text-primary)',fontSize:13,lineHeight:1.6,resize:'vertical',fontFamily:'inherit'}} />
+                    <div style={{display:'flex',gap:6,marginTop:8}}>
+                      <button onClick={() => saveEdit(r.id)} style={{fontSize:11,padding:'4px 12px',background:'var(--accent-primary)',color:'#fff',border:'none',borderRadius:4,cursor:'pointer'}}>Kaydet</button>
+                      <button onClick={cancelEdit} style={{fontSize:11,padding:'4px 12px',background:'rgba(255,255,255,0.05)',color:'var(--text-secondary)',border:'1px solid var(--border-color)',borderRadius:4,cursor:'pointer'}}>İptal</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{fontSize:14,color:'var(--text-secondary)',lineHeight:1.6}}>{r.edited_content || r.content}</p>
+                    {r.edited_content && (
+                      <details style={{marginTop:6}}>
+                        <summary style={{fontSize:11,color:'var(--text-muted)',cursor:'pointer'}}>Orijinal yorum</summary>
+                        <p style={{fontSize:12,color:'var(--text-muted)',marginTop:4,fontStyle:'italic'}}>{r.content}</p>
+                      </details>
+                    )}
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                {editingReview !== r.id && (
+                  <div style={{display:'flex',gap:6,marginTop:10,flexWrap:'wrap'}}>
+                    <button onClick={() => startEdit(r)} style={{fontSize:11,padding:'3px 8px',background:'rgba(255,255,255,0.05)',border:'1px solid var(--border-color)',borderRadius:4,color:'var(--text-secondary)',cursor:'pointer'}} title="Düzenle">✏️</button>
+                    <button onClick={() => updateReview(r.id, { is_pinned: !r.is_pinned })} style={{fontSize:11,padding:'3px 8px',background: r.is_pinned ? 'rgba(108,92,231,0.2)' : 'rgba(255,255,255,0.05)',border:'1px solid var(--border-color)',borderRadius:4,color:'var(--text-secondary)',cursor:'pointer'}} title={r.is_pinned ? 'Sabiti Kaldır' : 'Sabitle'}>📌</button>
+                    <button onClick={() => updateReview(r.id, { is_hidden: !r.is_hidden })} style={{fontSize:11,padding:'3px 8px',background: r.is_hidden ? 'rgba(225,112,85,0.2)' : 'rgba(255,255,255,0.05)',border:'1px solid var(--border-color)',borderRadius:4,color:'var(--text-secondary)',cursor:'pointer'}} title={r.is_hidden ? 'Göster' : 'Gizle'}>{r.is_hidden ? '👁' : '🚫'}</button>
+                    {r.edited_content && <button onClick={() => resetEdit(r.id)} style={{fontSize:11,padding:'3px 8px',background:'rgba(255,255,255,0.05)',border:'1px solid var(--border-color)',borderRadius:4,color:'var(--text-secondary)',cursor:'pointer'}} title="Düzenlemeyi Sıfırla">↩️</button>}
+                    <button onClick={() => deleteReview(r.id)} style={{fontSize:11,padding:'3px 8px',background:'rgba(225,112,85,0.05)',border:'1px solid rgba(225,112,85,0.3)',borderRadius:4,color:'var(--danger)',cursor:'pointer',marginLeft:'auto'}} title="Sil">🗑️</button>
+                  </div>
+                )}
               </div>
             ))}
             {(!reviews || reviews.length === 0) && <p style={{color:'var(--text-muted)',fontSize:14}}>Henüz yorum çekilmedi.</p>}
@@ -229,9 +323,9 @@ export default function UrunDetayPage({ params }) {
         </div>
 
         <div className="glass-card fade-in" style={{padding:24}}>
-          <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>❓ Sütun: Soru & Cevap ({questions?.length||0})</h2>
-          <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            {questions?.slice(0, reviews?.length > 0 ? reviews.length : 25).map((q,i) => (
+          <h2 style={{fontSize:16,fontWeight:700,marginBottom:16}}>❓ Soru & Cevap ({questions?.length||0})</h2>
+          <div style={{display:'flex',flexDirection:'column',gap:12,maxHeight:600,overflowY:'auto',paddingRight:8}}>
+            {questions?.slice(0,50).map((q,i) => (
               <div key={i} style={{padding:16,background:'rgba(255,255,255,0.02)',border:'1px solid var(--border-color)',borderRadius:'var(--radius-md)'}}>
                 <div style={{fontWeight:600,fontSize:13,marginBottom:4,color:'var(--text-primary)'}}>{q.user_name}</div>
                 <p style={{fontSize:14,color:'var(--text-secondary)',lineHeight:1.5,marginBottom:12}}><strong>S:</strong> {q.question_text}</p>

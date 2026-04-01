@@ -35,9 +35,14 @@ export async function GET(request, { params }) {
       [id]
     );
 
-    // Get reviews
+    // Get reviews — pinned first, then newest, include edit/hide status
     const reviews = await query(
-      'SELECT * FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 25',
+      `SELECT id, barcode_id, author, rating, content, review_date, helpful_count, scraped_at,
+              COALESCE(is_hidden, false) as is_hidden,
+              edited_content,
+              COALESCE(is_pinned, false) as is_pinned
+       FROM tp_reviews WHERE barcode_id = $1
+       ORDER BY COALESCE(is_pinned, false) DESC, scraped_at DESC LIMIT 50`,
       [id]
     );
 
