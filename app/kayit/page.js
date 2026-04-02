@@ -1,50 +1,7 @@
 'use client';
-import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 export default function KayitPage() {
-  const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    if (password.length < 6) {
-      setError('Şifre en az 6 karakter olmalı');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'register', email, password, name }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Kayıt başarısız');
-        setLoading(false);
-        return;
-      }
-
-      localStorage.setItem('tp_token', data.token);
-      localStorage.setItem('tp_user', JSON.stringify(data.user));
-      router.push('/panel');
-    } catch (err) {
-      setError('Bağlantı hatası');
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="auth-page">
       <div className="auth-glow"></div>
@@ -53,50 +10,33 @@ export default function KayitPage() {
           <span className="logo-icon">◆</span>
           <span className="logo-text">AKTARMATIK</span>
         </Link>
-        <h1>Ücretsiz Kayıt Ol</h1>
-        <p className="auth-subtitle">Hemen başlayın, kredi kartı gerekmez.</p>
+        <h1>Kayıt</h1>
+        <p className="auth-subtitle">Aktarmatik hizmetine erişim için yönetici onayı gerekmektedir.</p>
 
-        {error && <div className="auth-error">{error}</div>}
+        <div className="info-box">
+          <div className="info-icon">🔒</div>
+          <p className="info-title">Yönetici İzni Gerekli</p>
+          <p className="info-text">
+            Aktarmatik hizmeti, Morfil Medya tarafından yönetilen bir platformdur.
+            Hesap oluşturmak için lütfen bizimle iletişime geçin.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Ad Soyad</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Adınız Soyadınız"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">E-posta</label>
-            <input
-              type="email"
-              className="form-input"
-              placeholder="ornek@email.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Şifre</label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder="En az 6 karakter"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: '8px' }} disabled={loading}>
-            {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
-          </button>
-        </form>
+        <div className="contact-info">
+          <a href="tel:08503092049" className="contact-link">
+            <span>📞</span> 0850 309 20 49
+          </a>
+          <a href="tel:05407275757" className="contact-link">
+            <span>📱</span> 0540 727 57 57
+          </a>
+          <a href="mailto:morfilmedia@gmail.com?subject=Aktarmatik%20Hizmet%20Talebi" className="contact-link">
+            <span>✉️</span> morfilmedia@gmail.com
+          </a>
+        </div>
+
+        <a href="/#iletisim" className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: '16px', display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+          Hizmet Talep Formu
+        </a>
 
         <p className="auth-footer">
           Zaten hesabınız var mı? <Link href="/giris">Giriş yapın</Link>
@@ -157,20 +97,51 @@ export default function KayitPage() {
           font-size: 14px;
           margin-bottom: 32px;
         }
-        .auth-error {
-          background: rgba(225, 112, 85, 0.1);
-          border: 1px solid rgba(225, 112, 85, 0.3);
-          color: var(--danger);
-          padding: 10px 16px;
+        .info-box {
+          background: rgba(108, 92, 231, 0.08);
+          border: 1px solid rgba(108, 92, 231, 0.2);
           border-radius: var(--radius-md);
-          font-size: 13px;
-          margin-bottom: 16px;
+          padding: 24px;
+          margin-bottom: 24px;
         }
-        form {
+        .info-icon {
+          font-size: 28px;
+          margin-bottom: 12px;
+        }
+        .info-title {
+          font-size: 16px;
+          font-weight: 700;
+          margin-bottom: 8px;
+          color: #a29bfe;
+        }
+        .info-text {
+          font-size: 13px;
+          color: var(--text-secondary);
+          line-height: 1.6;
+        }
+        .contact-info {
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          text-align: left;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+        .contact-link {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 16px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: var(--radius-md);
+          color: var(--text-primary);
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        .contact-link:hover {
+          background: rgba(108, 92, 231, 0.1);
+          border-color: rgba(108, 92, 231, 0.3);
         }
         .auth-footer {
           margin-top: 24px;

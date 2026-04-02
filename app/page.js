@@ -2,6 +2,21 @@
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 
+function FAQItem({ question, answer }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="faq-item" onClick={() => setOpen(!open)}>
+      <div className="faq-q">
+        <span>{question}</span>
+        <span className={`faq-arrow ${open ? 'faq-arrow-open' : ''}`}>▾</span>
+      </div>
+      <div className={`faq-a ${open ? 'faq-a-open' : ''}`}>
+        <p>{answer}</p>
+      </div>
+    </div>
+  );
+}
+
 function AnimatedNum({ target, suffix = '' }) {
   const [val, setVal] = useState(0);
   const ref = useRef(null);
@@ -48,9 +63,9 @@ export default function HomePage() {
           <div className={`nav-links ${mobileMenu ? 'nav-open' : ''}`}>
             <a href="#nasil" onClick={() => setMobileMenu(false)}>Nasıl Çalışır?</a>
             <a href="#ozellikler" onClick={() => setMobileMenu(false)}>Özellikler</a>
-            <a href="#fiyat" onClick={() => setMobileMenu(false)}>Fiyatlandırma</a>
+            <a href="#iletisim" onClick={() => setMobileMenu(false)}>İletişim</a>
             <Link href="/giris" className="nav-btn" onClick={() => setMobileMenu(false)}>Giriş Yap</Link>
-            <Link href="/kayit" className="nav-btn nav-btn-fill" onClick={() => setMobileMenu(false)}>Ücretsiz Başla</Link>
+            <a href="#iletisim" className="nav-btn nav-btn-fill" onClick={() => setMobileMenu(false)}>Hizmet Talep Et</a>
           </div>
         </div>
       </nav>
@@ -91,7 +106,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="hero-btns">
-              <Link href="/kayit" className="btn-glow">Ücretsiz Dene →</Link>
+              <a href="#iletisim" className="btn-glow">Hizmet Talep Et →</a>
               <a href="#nasil" className="btn-ghost">Nasıl Çalışır?</a>
             </div>
             <div className="platforms">
@@ -155,7 +170,7 @@ export default function HomePage() {
           <div className="step"><div className="step-n">3</div><div className="step-i">🚀</div><h3>Script&apos;i Ekle, Bitti!</h3><p>Tek satır kodu sitenize ekleyin. Widget otomatik çalışır.</p></div>
         </div>
         <div className="steps-cta">
-          <Link href="/kayit" className="btn-glow">Hemen Başla — Ücretsiz!</Link>
+          <a href="#iletisim" className="btn-glow">Hizmet Talep Et</a>
         </div>
       </section>
 
@@ -215,38 +230,145 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FIYATLANDIRMA */}
-      <section className="sec sec-alt" id="fiyat">
-        <h2 className="sec-t">Basit & Şeffaf Fiyatlandırma</h2>
-        <p className="sec-s" style={{opacity:0.5}}>Ürün başına öde — gizli maliyet yok</p>
-        <div className="prices">
-          <div className="pr-card">
-            <div className="pr-name">Başlangıç</div>
-            <div className="pr-amt">Ücretsiz</div>
-            <div className="pr-per">Sonsuza kadar</div>
-            <ul className="pr-list">
-              <li>✅ 1 ürün eşleme</li>
-              <li>✅ Tüm widget özellikleri</li>
-              <li>✅ Sosyal kanıt gösterimi</li>
-              <li>✅ Yorum & Soru-Cevap</li>
-              <li>✅ E-posta desteği</li>
-            </ul>
-            <Link href="/kayit" className="pr-btn">Ücretsiz Başla</Link>
+      {/* TESTIMONIALS */}
+      <section className="sec sec-alt" id="yorumlar">
+        <h2 className="sec-t">Müşterilerimiz Ne Diyor?</h2>
+        <p className="sec-s" style={{opacity:0.5}}>Aktarmatik kullanan e-ticaret firmalarının deneyimleri</p>
+        <div className="testimonials">
+          <div className="testi-card">
+            <div className="testi-stars">★★★★★</div>
+            <p className="testi-text">&quot;Trendyol&apos;daki 4.9 puanımızı sitemizde göstermeye başladıktan sonra dönüşüm oranımız %38 arttı. Müşteriler artık doğrudan bizden sipariş veriyor.&quot;</p>
+            <div className="testi-author">
+              <div className="testi-avatar">AK</div>
+              <div>
+                <strong>Ahmet Kaya</strong>
+                <span>Doğal Yaşam Kozmetik — Kurucu</span>
+              </div>
+            </div>
           </div>
-          <div className="pr-card pr-pop">
-            <div className="pr-badge">En Popüler</div>
-            <div className="pr-name">Ürün Başı</div>
-            <div className="pr-amt">29 ₺<span>/ürün/ay</span></div>
-            <div className="pr-per">İstediğin kadar ürün ekle</div>
-            <ul className="pr-list">
-              <li>✅ Sınırsız ürün eşleme</li>
-              <li>✅ Tüm widget özellikleri</li>
-              <li>✅ Sosyal kanıt gösterimi</li>
-              <li>✅ Otomatik veri güncelleme</li>
-              <li>✅ Öncelikli destek</li>
-              <li>✅ Özel widget tasarımı</li>
-            </ul>
-            <Link href="/kayit" className="btn-glow" style={{display:'block',textAlign:'center'}}>Hemen Başla</Link>
+          <div className="testi-card">
+            <div className="testi-stars">★★★★★</div>
+            <p className="testi-text">&quot;Kurulumu gerçekten 3 dakika sürdü. Teknik bilgim olmamasına rağmen tek satır kodla widget&apos;ı sitemize ekledik. Sosyal kanıt etkisi inanılmaz.&quot;</p>
+            <div className="testi-author">
+              <div className="testi-avatar">SY</div>
+              <div>
+                <strong>Selin Yılmaz</strong>
+                <span>BebekDünyası — E-Ticaret Müdürü</span>
+              </div>
+            </div>
+          </div>
+          <div className="testi-card">
+            <div className="testi-stars">★★★★★</div>
+            <p className="testi-text">&quot;Sepet terk oranımız %22 düştü. Müşteriler ürün sayfasında Trendyol yorumlarını görünce güvenip alışverişi tamamlıyor. ROI&apos;si mükemmel.&quot;</p>
+            <div className="testi-author">
+              <div className="testi-avatar">MÖ</div>
+              <div>
+                <strong>Murat Özdemir</strong>
+                <span>TeknoPlus Elektronik — Genel Müdür</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="sec" id="sss">
+        <h2 className="sec-t">Sıkça Sorulan Sorular</h2>
+        <p className="sec-s" style={{opacity:0.5}}>Merak ettiklerinize hızlı cevaplar</p>
+        <div className="faq-list">
+          <FAQItem
+            question="Aktarmatik nedir?"
+            answer="Aktarmatik, Trendyol'daki müşteri yorumlarını, puanları ve sosyal kanıt verilerini (favori sayısı, sepet sayısı, satış adedi) kendi e-ticaret sitenizde otomatik olarak gösteren bir entegrasyon hizmetidir."
+          />
+          <FAQItem
+            question="Hangi platformlarla çalışır?"
+            answer="Aktarmatik; ikas, Shopify, WordPress (WooCommerce), IdeaSoft ve özel yazılım altyapılarıyla uyumludur. Tek satır JavaScript kodu ile her platformda çalışır."
+          />
+          <FAQItem
+            question="Kurulumu ne kadar sürer?"
+            answer="Kurulum ortalama 3 dakika sürer. Trendyol ürün linklerinizi eşleştirip, sitenize tek satır kod eklemeniz yeterlidir. Teknik bilgi gerektirmez."
+          />
+          <FAQItem
+            question="Trendyol verisi güncel kalır mı?"
+            answer="Evet, Aktarmatik Trendyol'daki yeni yorumları, puan değişikliklerini ve sosyal kanıt verilerini otomatik olarak günceller. Siteniz her zaman güncel kalır."
+          />
+          <FAQItem
+            question="Sitemin hızını etkiler mi?"
+            answer="Hayır. Widget asenkron yüklenir ve sitenizin sayfa hızını etkilemez. Google PageSpeed skorunuzda herhangi bir düşüş yaşamazsınız."
+          />
+          <FAQItem
+            question="Hizmet nasıl başlar?"
+            answer="Aşağıdaki formu doldurarak veya bizi 0850 309 20 49 numarasından arayarak hizmet talebinde bulunabilirsiniz. 24 saat içinde size dönüş yapıyoruz."
+          />
+        </div>
+      </section>
+
+      {/* ILETISIM FORMU */}
+      <section className="sec sec-alt" id="iletisim">
+        <h2 className="sec-t">Hizmet Talep Edin</h2>
+        <p className="sec-s" style={{opacity:0.5}}>Formu doldurun, size 24 saat içinde dönüş yapacağız</p>
+        <div className="contact-wrap">
+          <form className="contact-form" action="mailto:morfilmedia@gmail.com" method="POST" encType="text/plain">
+            <input type="hidden" name="subject" value="Aktarmatik Hizmet Talebi" />
+            <div className="form-row">
+              <div className="form-group">
+                <label>Ad Soyad *</label>
+                <input type="text" name="Ad Soyad" placeholder="Adınız Soyadınız" required />
+              </div>
+              <div className="form-group">
+                <label>Firma Adı *</label>
+                <input type="text" name="Firma Adi" placeholder="Firma adınız" required />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Telefon *</label>
+                <input type="tel" name="Telefon" placeholder="05XX XXX XX XX" required />
+              </div>
+              <div className="form-group">
+                <label>E-posta *</label>
+                <input type="email" name="E-posta" placeholder="ornek@firma.com" required />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>E-Ticaret Site URL</label>
+                <input type="url" name="Site URL" placeholder="https://www.siteniz.com" />
+              </div>
+              <div className="form-group">
+                <label>Trendyol Magaza URL</label>
+                <input type="url" name="Trendyol URL" placeholder="https://www.trendyol.com/magaza/..." />
+              </div>
+            </div>
+            <div className="form-group form-full">
+              <label>Mesaj</label>
+              <textarea name="Mesaj" rows={4} placeholder="Hizmet hakkında sormak istedikleriniz..."></textarea>
+            </div>
+            <button type="submit" className="btn-glow form-submit">Hizmet Talep Et →</button>
+          </form>
+          <div className="contact-info">
+            <div className="contact-info-card">
+              <div className="ci-icon">📞</div>
+              <div>
+                <strong>Bizi Arayın</strong>
+                <a href="tel:08503092049">0850 309 20 49</a>
+                <a href="tel:05407275757">0540 727 57 57</a>
+              </div>
+            </div>
+            <div className="contact-info-card">
+              <div className="ci-icon">✉️</div>
+              <div>
+                <strong>E-posta</strong>
+                <a href="mailto:morfilmedia@gmail.com">morfilmedia@gmail.com</a>
+              </div>
+            </div>
+            <div className="contact-info-card">
+              <div className="ci-icon">⏰</div>
+              <div>
+                <strong>Yanıt Süresi</strong>
+                <span>24 saat içinde dönüş</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -254,11 +376,12 @@ export default function HomePage() {
       {/* FOOTER */}
       <footer className="foot">
         <div className="foot-in">
-          <div><strong className="foot-logo">◆ AKTARMATIK</strong><p>Trendyol verilerinizi e-ticaret sitenize taşıyın.</p><p style={{fontSize:11,opacity:0.3}}>Morfil Media tarafından geliştirilmiştir.</p></div>
+          <div><strong className="foot-logo">◆ AKTARMATIK</strong><p>Trendyol verilerinizi e-ticaret sitenize taşıyın.</p><div className="foot-phones"><a href="tel:08503092049">📞 0850 309 20 49</a><a href="tel:05407275757">📞 0540 727 57 57</a></div><p style={{fontSize:11,opacity:0.3}}>Morfil Media tarafından geliştirilmiştir.</p></div>
           <div className="foot-links">
             <a href="#nasil">Nasıl Çalışır?</a>
             <a href="#ozellikler">Özellikler</a>
-            <a href="#fiyat">Fiyatlandırma</a>
+            <a href="#sss">SSS</a>
+            <a href="#iletisim">İletişim</a>
             <Link href="/giris">Giriş Yap</Link>
           </div>
         </div>
@@ -370,21 +493,51 @@ export default function HomePage() {
         .demo-c h4{font-size:14px;font-weight:700;margin-bottom:12px;color:#a78bfa}
         .demo-w{padding:8px 0}
 
-        /* PRICING */
-        .prices{display:flex;justify-content:center;gap:24px;max-width:800px;margin:0 auto;padding:0 24px}
-        .pr-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:40px;flex:1;max-width:380px;position:relative;transition:all 0.3s}
-        .pr-card:hover{transform:translateY(-4px);border-color:rgba(108,92,231,0.2)}
-        .pr-pop{border:2px solid rgba(108,92,231,0.5);background:rgba(108,92,231,0.06);transform:scale(1.03)}
-        .pr-pop:hover{transform:scale(1.03) translateY(-4px)}
-        .pr-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6c5ce7,#a855f7);color:white;padding:5px 18px;border-radius:20px;font-size:12px;font-weight:700;box-shadow:0 4px 15px rgba(108,92,231,0.4)}
-        .pr-name{font-size:20px;font-weight:800;margin-bottom:8px;color:white}
-        .pr-amt{font-size:44px;font-weight:900;color:#a78bfa}
-        .pr-amt span{font-size:15px;color:rgba(255,255,255,0.4);font-weight:500}
-        .pr-per{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:24px}
-        .pr-list{list-style:none;padding:0;margin-bottom:28px}
-        .pr-list li{font-size:14px;padding:7px 0;color:rgba(255,255,255,0.65)}
-        .pr-btn{display:block;text-align:center;padding:14px;border-radius:12px;font-weight:700;text-decoration:none;color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.15);font-size:14px;transition:all 0.2s}
-        .pr-btn:hover{border-color:#6c5ce7;color:white;background:rgba(108,92,231,0.1)}
+        /* TESTIMONIALS */
+        .testimonials{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1200px;margin:0 auto;padding:0 24px}
+        .testi-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:20px;padding:28px;transition:all 0.3s}
+        .testi-card:hover{transform:translateY(-4px);border-color:rgba(108,92,231,0.25);background:rgba(108,92,231,0.04)}
+        .testi-stars{color:#f39c12;font-size:16px;margin-bottom:14px}
+        .testi-text{font-size:14px;color:rgba(255,255,255,0.6);line-height:1.7;font-style:italic;margin-bottom:20px}
+        .testi-author{display:flex;align-items:center;gap:12px}
+        .testi-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:white;flex-shrink:0}
+        .testi-author strong{display:block;font-size:14px;color:white;font-weight:700}
+        .testi-author span{font-size:12px;color:rgba(255,255,255,0.4)}
+
+        /* FAQ */
+        .faq-list{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+        .faq-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:0;cursor:pointer;transition:all 0.3s;overflow:hidden}
+        .faq-item:hover{border-color:rgba(108,92,231,0.25);background:rgba(108,92,231,0.04)}
+        .faq-q{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;font-weight:700;font-size:15px;color:white}
+        .faq-arrow{font-size:18px;color:#6c5ce7;transition:transform 0.3s}
+        .faq-arrow-open{transform:rotate(180deg)}
+        .faq-a{max-height:0;overflow:hidden;transition:max-height 0.35s ease,padding 0.35s ease;padding:0 24px}
+        .faq-a-open{max-height:200px;padding:0 24px 20px}
+        .faq-a p{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7}
+
+        /* CONTACT FORM */
+        .contact-wrap{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 280px;gap:32px;padding:0 24px}
+        .contact-form{display:flex;flex-direction:column;gap:16px}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .form-group{display:flex;flex-direction:column;gap:6px}
+        .form-group label{font-size:13px;font-weight:600;color:rgba(255,255,255,0.6)}
+        .form-group input,.form-group textarea{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 16px;color:white;font-size:14px;font-family:inherit;transition:border-color 0.2s;outline:none;resize:vertical}
+        .form-group input::placeholder,.form-group textarea::placeholder{color:rgba(255,255,255,0.25)}
+        .form-group input:focus,.form-group textarea:focus{border-color:rgba(108,92,231,0.5)}
+        .form-full{width:100%}
+        .form-submit{border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center}
+        .contact-info{display:flex;flex-direction:column;gap:16px}
+        .contact-info-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;display:flex;gap:14px;align-items:flex-start;transition:all 0.3s}
+        .contact-info-card:hover{border-color:rgba(108,92,231,0.2)}
+        .ci-icon{font-size:24px}
+        .contact-info-card strong{display:block;font-size:14px;color:white;margin-bottom:4px}
+        .contact-info-card a,.contact-info-card span{display:block;font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;transition:color 0.2s}
+        .contact-info-card a:hover{color:#a78bfa}
+
+        /* FOOTER PHONES */
+        .foot-phones{display:flex;gap:16px;margin-top:8px;margin-bottom:4px}
+        .foot-phones a{color:#a78bfa;text-decoration:none;font-size:13px;font-weight:600;transition:color 0.2s}
+        .foot-phones a:hover{color:white}
 
         /* FOOTER */
         .foot{background:#06060c;border-top:1px solid rgba(255,255,255,0.04);color:white;padding:48px 24px}
@@ -400,6 +553,8 @@ export default function HomePage() {
           .hero-in{gap:40px}
           .hero-left h1{font-size:42px}
           .feats{grid-template-columns:repeat(2,1fr)}
+          .testimonials{grid-template-columns:repeat(2,1fr)}
+          .contact-wrap{grid-template-columns:1fr}
         }
         @media(max-width:768px){
           .mob-btn{display:block}
@@ -417,10 +572,12 @@ export default function HomePage() {
           .step-arr{display:none}
           .feats{grid-template-columns:1fr;max-width:400px;margin:0 auto}
           .demos{grid-template-columns:1fr}
-          .prices{flex-direction:column;align-items:center}
-          .pr-pop{transform:none}
-          .pr-pop:hover{transform:translateY(-4px)}
+          .testimonials{grid-template-columns:1fr}
+          .contact-wrap{grid-template-columns:1fr}
+          .contact-info{flex-direction:row;flex-wrap:wrap}
+          .form-row{grid-template-columns:1fr}
           .foot-in{flex-direction:column;gap:24px}
+          .foot-phones{flex-direction:column;gap:6px}
           .foot-links{flex-wrap:wrap;gap:16px}
         }
         @media(max-width:480px){
