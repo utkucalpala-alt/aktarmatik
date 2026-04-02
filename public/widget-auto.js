@@ -75,8 +75,12 @@
       C + ' .ak-tab { padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; color: #999; transition: all 0.2s; user-select: none; }',
       C + ' .ak-tab:hover { color: #333; }',
       C + ' .ak-tab.active { color: #ff6b00; border-bottom-color: #ff6b00; }',
-      C + ' .ak-panel { display: none; }',
+      C + ' .ak-panel { display: none; max-height: 420px; overflow-y: auto; scroll-behavior: smooth; }',
       C + ' .ak-panel.active { display: block; }',
+      C + ' .ak-panel::-webkit-scrollbar { width: 5px; }',
+      C + ' .ak-panel::-webkit-scrollbar-track { background: #f5f5f5; border-radius: 4px; }',
+      C + ' .ak-panel::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }',
+      C + ' .ak-panel::-webkit-scrollbar-thumb:hover { background: #aaa; }',
 
       /* Reviews */
       C + ' .ak-review { padding: 12px; border: 1px solid #eee; border-radius: 8px; margin: 8px 0; }',
@@ -103,13 +107,13 @@
       C + ' .ak-rotating.ak-fade { opacity: 0; }',
 
       /* Card badges (listing pages) — inserted AFTER product card as sibling */
-      '.ak-card-badge { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.3; width: 100%; box-sizing: border-box; }',
+      '.ak-card-badge { display: flex; flex-direction: column; gap: 3px; padding: 6px 10px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.3; width: 100%; box-sizing: border-box; }',
       '.ak-card-badge .ak-card-row { display: flex; align-items: center; gap: 5px; }',
       '.ak-card-badge .ak-card-stars { color: #f39c12; font-size: 14px; letter-spacing: 0; }',
       '.ak-card-badge .ak-card-rating { font-weight: 800; font-size: 15px; color: #333; }',
       '.ak-card-badge .ak-card-count { color: #777; font-size: 13px; font-weight: 500; }',
-      '.ak-card-badge .ak-card-fav { color: #e74c3c; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }',
-      '.ak-card-badge .ak-card-social { color: #FF6000; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }',
+      '.ak-card-badge .ak-card-social-rotate { color: #FF6000; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; min-height: 18px; transition: opacity 0.4s ease; }',
+      '.ak-card-badge .ak-card-social-rotate.ak-fade { opacity: 0; }',
     ].join('\n');
 
     var styleEl = document.createElement('style');
@@ -786,22 +790,36 @@
     }
     html += '</div>';
 
-    // Row 2: Favorites
-    if (favCount > 0) {
-      html += '<div class="ak-card-fav">\u2764\uFE0F ' + formatNum(favCount) + ' ki\u015fi favoriledi</div>';
-    }
+    // Row 2: Rotating social proof
+    var socialMsgs = [];
+    if (favCount > 0) socialMsgs.push('\u2764\uFE0F ' + formatNum(favCount) + ' ki\u015fi favoriledi');
+    if (cartCount > 0) socialMsgs.push('\uD83D\uDED2 ' + formatNum(cartCount) + ' ki\u015finin sepetinde');
+    if (soldCount > 0) socialMsgs.push('\uD83D\uDCE6 ' + formatNum(soldCount) + '+ adet sat\u0131ld\u0131');
 
-    // Row 3: Cart count
-    if (cartCount > 0) {
-      html += '<div class="ak-card-social">\uD83D\uDED2 ' + formatNum(cartCount) + ' ki\u015finin sepetinde</div>';
-    }
-
-    // Row 4: Sold count
-    if (soldCount > 0) {
-      html += '<div class="ak-card-social">\uD83D\uDCE6 ' + formatNum(soldCount) + '+ adet sat\u0131ld\u0131</div>';
+    if (socialMsgs.length > 0) {
+      html += '<div class="ak-card-social-rotate">' + socialMsgs[0] + '</div>';
     }
 
     badge.innerHTML = html;
+
+    // Start rotation if multiple messages
+    if (socialMsgs.length > 1) {
+      var rotateEl = badge.querySelector('.ak-card-social-rotate');
+      if (rotateEl) {
+        (function(el, msgs) {
+          var idx = 0;
+          setInterval(function() {
+            if (!el || !document.contains(el)) return;
+            el.classList.add('ak-fade');
+            setTimeout(function() {
+              idx = (idx + 1) % msgs.length;
+              el.innerHTML = msgs[idx];
+              el.classList.remove('ak-fade');
+            }, 400);
+          }, 3000);
+        })(rotateEl, socialMsgs);
+      }
+    }
 
     var point = findCardInsertionPoint(card);
     if (point.ref) {
