@@ -102,13 +102,14 @@
       C + ' .ak-rotating { transition: opacity 0.4s ease; }',
       C + ' .ak-rotating.ak-fade { opacity: 0; }',
 
-      /* Card badges (listing pages) */
-      '.ak-card-badge { display: flex; align-items: center; gap: 6px; padding: 8px 0; margin: 4px 0; flex-wrap: wrap; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1; width: 100%; }',
-      '.ak-card-badge .ak-card-stars { color: #FF6000; font-size: 16px; letter-spacing: 1px; }',
-      '.ak-card-badge .ak-card-rating { font-weight: 800; font-size: 17px; color: #FF6000; }',
-      '.ak-card-badge .ak-card-count { color: #777; font-size: 14px; font-weight: 500; }',
-      '.ak-card-badge .ak-card-popular { color: #FF6000; font-size: 14px; font-weight: 700; flex-basis: 100%; margin-top: 5px; display: flex; align-items: center; gap: 4px; }',
-      '.ak-card-badge .ak-card-fav { color: #e74c3c; font-size: 13px; font-weight: 600; flex-basis: 100%; margin-top: 4px; display: flex; align-items: center; gap: 4px; }',
+      /* Card badges (listing pages) — inserted AFTER product card as sibling */
+      '.ak-card-badge { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.3; width: 100%; box-sizing: border-box; }',
+      '.ak-card-badge .ak-card-row { display: flex; align-items: center; gap: 5px; }',
+      '.ak-card-badge .ak-card-stars { color: #f39c12; font-size: 14px; letter-spacing: 0; }',
+      '.ak-card-badge .ak-card-rating { font-weight: 800; font-size: 15px; color: #333; }',
+      '.ak-card-badge .ak-card-count { color: #777; font-size: 13px; font-weight: 500; }',
+      '.ak-card-badge .ak-card-fav { color: #e74c3c; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }',
+      '.ak-card-badge .ak-card-social { color: #FF6000; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }',
     ].join('\n');
 
     var styleEl = document.createElement('style');
@@ -751,41 +752,17 @@
 
   function findCardInsertionPoint(card) {
     var cardEl = card.cardEl;
-    var anchorEl = card.anchorEl || cardEl.querySelector('a[href]') || cardEl;
 
-    // ikas theme (softtoplus): .add-to-cart-overlay > .stock > a > [content]
-    // Insert as last child of the anchor (after brand + product name)
-    if (cardEl.classList && cardEl.classList.contains('add-to-cart-overlay')) {
-      return { parent: anchorEl, ref: null };
-    }
-
-    // ikas: inject into .product-list-item-info
-    var infoEl = cardEl.querySelector('.product-list-item-info, [class*="product-list-item-info"]');
-    if (infoEl) {
-      var overlay = infoEl.querySelector('.add-to-cart-overlay');
-      return overlay
-        ? { parent: overlay.parentNode, ref: overlay }
-        : { parent: infoEl, ref: null };
-    }
-
-    // Before cart overlay
-    var cartOverlay = cardEl.querySelector('.add-to-cart-overlay, [class*="add-to-cart"]');
-    if (cartOverlay) {
-      return { parent: cartOverlay.parentNode, ref: cartOverlay };
-    }
-
-    // After price element
-    var priceEl = cardEl.querySelector('[class*="price"],[class*="Price"],[class*="fiyat"]');
-    if (priceEl) return { parent: priceEl.parentNode, ref: priceEl.nextSibling };
-
-    // Last child of anchor or card
-    return { parent: anchorEl, ref: null };
+    // Insert AFTER the card element as a sibling (not inside the card)
+    // This ensures the badge appears below the card without disrupting layout
+    return { parent: cardEl.parentNode, ref: cardEl.nextSibling };
   }
 
   function renderCardBadge(card, product) {
     var cardEl = card.cardEl;
-    var existing = cardEl.querySelector('.ak-card-badge');
-    if (existing) existing.remove();
+    // Check for existing badge as next sibling
+    var next = cardEl.nextElementSibling;
+    if (next && next.classList && next.classList.contains('ak-card-badge')) next.remove();
 
     if (!product || !product.rating) return;
 
@@ -798,16 +775,30 @@
     var badge = document.createElement('div');
     badge.className = 'ak-card-badge';
 
-    // Yıldız + puan + yorum sayısı
-    var html = '<span class="ak-card-stars">' + starHtml(rating) + '</span>';
+    var html = '';
+
+    // Row 1: Stars + Rating + Review count
+    html += '<div class="ak-card-row">';
+    html += '<span class="ak-card-stars">' + starHtml(rating) + '</span>';
     html += '<span class="ak-card-rating">' + rating.toFixed(1) + '</span>';
     if (reviewCount > 0) {
       html += '<span class="ak-card-count">(' + formatNum(reviewCount) + ' yorum)</span>';
     }
+    html += '</div>';
 
-    // Favori satırı
+    // Row 2: Favorites
     if (favCount > 0) {
-      html += '<span class="ak-card-fav">\u2764\uFE0F ' + formatNum(favCount) + ' ki\u015fi favoriledi</span>';
+      html += '<div class="ak-card-fav">\u2764\uFE0F ' + formatNum(favCount) + ' ki\u015fi favoriledi</div>';
+    }
+
+    // Row 3: Cart count
+    if (cartCount > 0) {
+      html += '<div class="ak-card-social">\uD83D\uDED2 ' + formatNum(cartCount) + ' ki\u015finin sepetinde</div>';
+    }
+
+    // Row 4: Sold count
+    if (soldCount > 0) {
+      html += '<div class="ak-card-social">\uD83D\uDCE6 ' + formatNum(soldCount) + '+ adet sat\u0131ld\u0131</div>';
     }
 
     badge.innerHTML = html;
@@ -855,7 +846,9 @@
     var cards = findListingCards();
     for (var i = 0; i < cards.length; i++) {
       var card = cards[i];
-      if (card.cardEl.querySelector('.ak-card-badge')) continue;
+      // Badge is a sibling after the card, not inside it
+      var nextEl = card.cardEl.nextElementSibling;
+      if (nextEl && nextEl.classList && nextEl.classList.contains('ak-card-badge')) continue;
       var product = listingCache[card.path];
       if (product) {
         renderCardBadge(card, product);
