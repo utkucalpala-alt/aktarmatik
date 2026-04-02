@@ -659,22 +659,20 @@
 
   function findListingCards() {
     var results = [];
-    var seen = {};
     var hostname = window.location.hostname;
 
     // Strategy 0 (highest priority): ikas theme with .add-to-cart-overlay > .stock > a structure
     // softtoplus.com uses this: <div class="add-to-cart-overlay"><div class="stock btn-X"><a href="/slug">...</a></div></div>
+    // NOTE: no "seen" dedup — sliders clone DOM elements, all instances need badges
     var overlays = document.querySelectorAll('.add-to-cart-overlay');
     if (overlays.length >= 2) {
       for (var oi = 0; oi < overlays.length; oi++) {
         var anchor = overlays[oi].querySelector('a[href]');
         if (!anchor) continue;
         var url = anchor.href;
-        if (!url || seen[url]) continue;
+        if (!url) continue;
         var path = url.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
         if (!path || path === '' || path === '/') continue;
-        seen[url] = true;
-        // Use the overlay as the card element (outermost container)
         results.push({ cardEl: overlays[oi], anchorEl: anchor, productUrl: url, path: path });
       }
       if (results.length >= 2) return results;
@@ -696,10 +694,9 @@
           if (!anchor2) anchor2 = item.querySelector('a[href]');
           if (!anchor2) continue;
           var url2 = anchor2.href;
-          if (!url2 || seen[url2]) continue;
+          if (!url2) continue;
           var path2 = url2.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
           if (!path2 || path2 === '' || path2 === '/') continue;
-          seen[url2] = true;
           results.push({ cardEl: anchor2.closest('[class*="product"]') || anchor2, anchorEl: anchor2, productUrl: url2, path: path2 });
         }
         if (results.length >= 2) return results;
@@ -720,11 +717,10 @@
           var linkEl = cardEl2.tagName === 'A' ? cardEl2 : cardEl2.querySelector('a[href]');
           if (!linkEl) continue;
           var url3 = linkEl.href;
-          if (!url3 || seen[url3]) continue;
+          if (!url3) continue;
           if (url3.indexOf(hostname) === -1 && url3.indexOf('http') === 0) continue;
           var path3 = url3.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
           if (!path3 || path3 === '/' || path3.indexOf('.') !== -1) continue;
-          seen[url3] = true;
           results.push({ cardEl: cardEl2, anchorEl: linkEl, productUrl: url3, path: path3 });
         }
         if (results.length >= 2) return results;
@@ -746,8 +742,6 @@
       if (segments.length === 0 || segments.length > 3) continue;
       if (!a.querySelector('img')) continue;
       if ((a.textContent || '').trim().length < 5) continue;
-      if (seen[fullUrl.href]) continue;
-      seen[fullUrl.href] = true;
       results.push({ cardEl: a, anchorEl: a, productUrl: fullUrl.href, path: aPath });
     }
 
