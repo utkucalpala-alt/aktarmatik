@@ -107,7 +107,7 @@
       C + ' .ak-rotating.ak-fade { opacity: 0; }',
 
       /* Card badges (listing pages) — inserted AFTER product card as sibling */
-      '.ak-card-badge { display: flex; flex-direction: column; gap: 3px; padding: 6px 10px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.3; width: 100%; box-sizing: border-box; }',
+      '.ak-card-badge { display: flex; flex-direction: column; gap: 3px; padding: 6px 10px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.3; width: 100%; box-sizing: border-box; text-decoration: none !important; }',
       '.ak-card-badge .ak-card-row { display: flex; align-items: center; gap: 5px; }',
       '.ak-card-badge .ak-card-stars { color: #f39c12; font-size: 14px; letter-spacing: 0; }',
       '.ak-card-badge .ak-card-rating { font-weight: 800; font-size: 15px; color: #333; }',
@@ -756,17 +756,18 @@
 
   function findCardInsertionPoint(card) {
     var cardEl = card.cardEl;
+    var anchorEl = card.anchorEl || cardEl.querySelector('a[href]') || cardEl;
 
-    // Insert AFTER the card element as a sibling (not inside the card)
-    // This ensures the badge appears below the card without disrupting layout
-    return { parent: cardEl.parentNode, ref: cardEl.nextSibling };
+    // Insert INSIDE the anchor tag at the end — keeps badge within the card boundary
+    return { parent: anchorEl, ref: null };
   }
 
   function renderCardBadge(card, product) {
     var cardEl = card.cardEl;
-    // Check for existing badge as next sibling
-    var next = cardEl.nextElementSibling;
-    if (next && next.classList && next.classList.contains('ak-card-badge')) next.remove();
+    var anchorEl = card.anchorEl || cardEl.querySelector('a[href]') || cardEl;
+    // Check for existing badge inside anchor
+    var existing = anchorEl.querySelector('.ak-card-badge');
+    if (existing) existing.remove();
 
     if (!product || !product.rating) return;
 
@@ -864,10 +865,27 @@
     var cards = findListingCards();
     for (var i = 0; i < cards.length; i++) {
       var card = cards[i];
-      // Badge is a sibling after the card, not inside it
-      var nextEl = card.cardEl.nextElementSibling;
-      if (nextEl && nextEl.classList && nextEl.classList.contains('ak-card-badge')) continue;
+      var anchorEl = card.anchorEl || card.cardEl.querySelector('a[href]') || card.cardEl;
+      if (anchorEl.querySelector('.ak-card-badge')) continue;
+
+      // Try exact path match first
       var product = listingCache[card.path];
+
+      // Fallback: try matching by slug (last segment of path)
+      if (!product && card.path) {
+        var slug = card.path.split('/').pop();
+        if (slug) {
+          for (var key in listingCache) {
+            var apiSlug = key.split('/').pop();
+            // Match if either slug contains the other (handles prefix/suffix differences)
+            if (slug === apiSlug || (slug.length > 10 && apiSlug.indexOf(slug) !== -1) || (apiSlug.length > 10 && slug.indexOf(apiSlug) !== -1)) {
+              product = listingCache[key];
+              break;
+            }
+          }
+        }
+      }
+
       if (product) {
         renderCardBadge(card, product);
       }
