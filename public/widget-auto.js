@@ -108,6 +108,7 @@
       '.ak-card-badge .ak-card-rating { font-weight: 800; font-size: 17px; color: #FF6000; }',
       '.ak-card-badge .ak-card-count { color: #777; font-size: 14px; font-weight: 500; }',
       '.ak-card-badge .ak-card-popular { color: #FF6000; font-size: 14px; font-weight: 700; flex-basis: 100%; margin-top: 5px; display: flex; align-items: center; gap: 4px; }',
+      '.ak-card-badge .ak-card-fav { color: #e74c3c; font-size: 13px; font-weight: 600; flex-basis: 100%; margin-top: 4px; display: flex; align-items: center; gap: 4px; }',
     ].join('\n');
 
     var styleEl = document.createElement('style');
@@ -649,55 +650,130 @@
   // ========================
   // LISTING PAGE CARD BADGES
   // ========================
+  var listingCache = null; // cached bulk data for current domain
+
   function findListingCards() {
     var results = [];
     var seen = {};
+    var hostname = window.location.hostname;
 
-    // Strategy 1: ikas — card is <a class="grid"> containing .product-list-item
-    // Walk up from .product-list-item to find the <a> ancestor
-    var ikasItems = document.querySelectorAll('.product-list-item, .product-container');
-    if (ikasItems.length >= 2) {
-      for (var ii = 0; ii < ikasItems.length; ii++) {
-        var item = ikasItems[ii];
-        var anchor = item.closest('a[href]');
-        if (!anchor) continue;
-        var url = anchor.href;
-        if (!url || seen[url]) continue;
-        var path = url.replace(/^https?:\/\/[^/]+/, '').replace(/\/$/, '');
-        if (!path || path === '' || path.split('/').length > 3) continue;
-        seen[url] = true;
-        results.push({ cardEl: anchor, productUrl: url, infoEl: item });
+    // Strategy 1: ikas — look for known ikas card selectors
+    var ikasSelectors = [
+      '.product-list-item',
+      '.product-container',
+      '[class*="product-list-item"]',
+      '[class*="productListItem"]',
+    ];
+    for (var is = 0; is < ikasSelectors.length; is++) {
+      var ikasItems = document.querySelectorAll(ikasSelectors[is]);
+      if (ikasItems.length >= 2) {
+        for (var ii = 0; ii < ikasItems.length; ii++) {
+          var item = ikasItems[ii];
+          var anchor = item.closest('a[href]');
+          if (!anchor) anchor = item.querySelector('a[href]');
+          if (!anchor) continue;
+          var url = anchor.href;
+          if (!url || seen[url]) continue;
+          var path = url.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
+          if (!path || path === '' || path === '/') continue;
+          seen[url] = true;
+          results.push({ cardEl: anchor.closest('[class*="product"]') || anchor, productUrl: url, path: path });
+        }
+        if (results.length >= 2) return results;
       }
     }
 
     // Strategy 2: Generic product card selectors
+    var cardSelectors = [
+      'a.product-card', 'a[class*="product-card"]',
+      '.product-card', '[class*="productCard"]', '[class*="product-item"]',
+    ];
+    for (var si = 0; si < cardSelectors.length; si++) {
+      try {
+        var containers = document.querySelectorAll(cardSelectors[si]);
+        if (containers.length < 2) continue;
+        for (var ei = 0; ei < containers.length; ei++) {
+          var cardEl2 = containers[ei];
+          var linkEl = cardEl2.tagName === 'A' ? cardEl2 : cardEl2.querySelector('a[href]');
+          if (!linkEl) continue;
+          var url2 = linkEl.href;
+          if (!url2 || seen[url2]) continue;
+          if (url2.indexOf(hostname) === -1 && url2.indexOf('http') === 0) continue;
+          var path2 = url2.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
+          if (!path2 || path2 === '/' || path2.indexOf('.') !== -1) continue;
+          seen[url2] = true;
+          results.push({ cardEl: cardEl2, productUrl: url2, path: path2 });
+        }
+        if (results.length >= 2) return results;
+      } catch(e) {}
+    }
+
+    // Strategy 3: Smart detection — find product-like anchor tags with images
+    // ikas and many platforms: product cards are <a href="/slug"> with an <img> inside
+    var allAnchors = document.querySelectorAll('a[href]');
+    var productAnchors = [];
+    for (var ai = 0; ai < allAnchors.length; ai++) {
+      var a = allAnchors[ai];
+      var href = a.getAttribute('href') || '';
+      // Must be internal link with a slug path (not /, not #, not external)
+      if (href.indexOf('#') === 0 || href === '/' || href === '') continue;
+      var fullUrl;
+      try { fullUrl = new URL(href, window.location.origin); } catch(e) { continue; }
+      if (fullUrl.hostname !== hostname) continue;
+      var aPath = fullUrl.pathname.replace(/\/$/, '');
+      if (!aPath || aPath === '' || aPath === '/') continue;
+      // Skip obvious non-product links (categories with too many segments, static pages)
+      var segments = aPath.split('/').filter(function(s) { return s; });
+      if (segments.length === 0 || segments.length > 3) continue;
+      // Must contain an image (product cards have product images)
+      var img = a.querySelector('img');
+      if (!img) continue;
+      // Must have some text content (product name)
+      var textLen = (a.textContent || '').trim().length;
+      if (textLen < 5) continue;
+      // Skip if already found
+      if (seen[fullUrl.href]) continue;
+      seen[fullUrl.href] = true;
+      productAnchors.push({ el: a, url: fullUrl.href, path: aPath });
+    }
+
+    // Group nearby anchors — if many similar anchors exist, they're likely product cards
+    if (productAnchors.length >= 3) {
+      for (var pi = 0; pi < productAnchors.length; pi++) {
+        var pa = productAnchors[pi];
+        // Find the best card container: walk up to find a repeated parent structure
+        var cardContainer = pa.el;
+        // Check if the anchor contains add-to-cart overlay or price info
+        var hasPrice = pa.el.querySelector('[class*="price"],[class*="Price"],[class*="fiyat"]');
+        var hasCart = pa.el.querySelector('[class*="cart"],[class*="sepet"],[class*="basket"],.add-to-cart-overlay,.stock');
+        if (hasPrice || hasCart || pa.el.querySelector('img[src*="cdn"]')) {
+          results.push({ cardEl: cardContainer, productUrl: pa.url, path: pa.path });
+        }
+      }
+    }
+
+    // Strategy 4: Even simpler — if we find add-to-cart-overlay elements, walk up to <a>
     if (results.length < 2) {
-      var cardSelectors = [
-        { container: 'a.product-card', link: null },
-        { container: 'a[class*="product-card"]', link: null },
-        { container: '.product-card', link: 'a[href]' },
-        { container: '[class*="productCard"]', link: 'a[href]' },
-        { container: '[class*="product-item"]', link: 'a[href]' },
-      ];
-      for (var si = 0; si < cardSelectors.length; si++) {
-        try {
-          var sel = cardSelectors[si];
-          var containers = document.querySelectorAll(sel.container);
-          if (containers.length < 2) continue;
-          for (var ei = 0; ei < containers.length; ei++) {
-            var cardEl2 = containers[ei];
-            var linkEl = sel.link ? cardEl2.querySelector(sel.link) : cardEl2;
-            if (!linkEl) continue;
-            var url2 = linkEl.href || linkEl.getAttribute('href');
-            if (!url2 || seen[url2]) continue;
-            if (url2.indexOf(window.location.hostname) === -1 && url2.indexOf('http') === 0) continue;
-            var path2 = url2.replace(/^https?:\/\/[^/]+/, '');
-            if (!path2 || path2 === '/' || path2.indexOf('.') !== -1) continue;
-            seen[url2] = true;
-            results.push({ cardEl: cardEl2, productUrl: url2 });
+      var cartOverlays = document.querySelectorAll('.add-to-cart-overlay, [class*="add-to-cart"], [class*="addToCart"]');
+      for (var ci = 0; ci < cartOverlays.length; ci++) {
+        var overlay = cartOverlays[ci];
+        var parentAnchor = overlay.closest('a[href]');
+        if (!parentAnchor) {
+          // Maybe the anchor is a sibling or parent's sibling
+          var parentEl = overlay.parentElement;
+          while (parentEl && parentEl !== document.body) {
+            parentAnchor = parentEl.querySelector('a[href]') || parentEl.closest('a[href]');
+            if (parentAnchor) break;
+            parentEl = parentEl.parentElement;
           }
-          if (results.length >= 2) break;
-        } catch(e) {}
+        }
+        if (!parentAnchor) continue;
+        var cUrl = parentAnchor.href;
+        if (!cUrl || seen[cUrl]) continue;
+        var cPath = cUrl.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
+        if (!cPath || cPath === '/') continue;
+        seen[cUrl] = true;
+        results.push({ cardEl: parentAnchor, productUrl: cUrl, path: cPath });
       }
     }
 
@@ -710,29 +786,39 @@
     if (infoEl) {
       var overlay = infoEl.querySelector('.add-to-cart-overlay');
       return overlay
-        ? { parent: overlay.parentNode, ref: overlay }  // overlay'in gerçek parent'ına ekle
+        ? { parent: overlay.parentNode, ref: overlay }
         : { parent: infoEl, ref: null };
     }
-    // Generic: try after price element
+
+    // ikas: insert before .add-to-cart-overlay (cart button at bottom of card)
+    var cartOverlay = cardEl.querySelector('.add-to-cart-overlay, [class*="add-to-cart"]');
+    if (cartOverlay) {
+      return { parent: cartOverlay.parentNode, ref: cartOverlay };
+    }
+
+    // After price element
     var priceEl = cardEl.querySelector('[class*="price"],[class*="Price"],[class*="fiyat"]');
     if (priceEl) return { parent: priceEl.parentNode, ref: priceEl.nextSibling };
+
+    // After any text content that looks like product info
     var genericInfo = cardEl.querySelector('[class*="information"],[class*="detail"],[class*="info"]');
     if (genericInfo) return { parent: genericInfo, ref: null };
+
+    // Last child of the card
     return { parent: cardEl, ref: null };
   }
 
-  function renderCardBadge(cardEl, data) {
+  function renderCardBadge(cardEl, product) {
     var existing = cardEl.querySelector('.ak-card-badge');
     if (existing) existing.remove();
 
-    if (!data || !data.data || !data.data.rating) return;
+    if (!product || !product.rating) return;
 
-    var d = data.data;
-    var rating = parseFloat(d.rating);
-    var reviewCount = parseInt(d.review_count) || 0;
-    var favCount = parseInt(d.favorite_count) || 0;
-    var cartCount = parseInt(d.cart_count) || 0;
-    var soldCount = parseInt(d.sold_count) || 0;
+    var rating = parseFloat(product.rating);
+    var reviewCount = parseInt(product.review_count) || 0;
+    var favCount = parseInt(product.favorite_count) || 0;
+    var cartCount = parseInt(product.cart_count) || 0;
+    var soldCount = parseInt(product.sold_count) || 0;
 
     var badge = document.createElement('div');
     badge.className = 'ak-card-badge';
@@ -744,35 +830,12 @@
       html += '<span class="ak-card-count">(' + formatNum(reviewCount) + ' yorum)</span>';
     }
 
-    badge.innerHTML = html;
-
-    // Dönen sosyal kanıt mesajları (turuncu)
-    var socialMessages = [];
-    if (favCount > 0) socialMessages.push('\u2764\uFE0F <strong>' + formatNum(favCount) + ' ki\u015fi</strong> favoriledi');
-    if (cartCount > 0) socialMessages.push('\uD83D\uDED2 <strong>' + formatNum(cartCount) + '</strong> ki\u015finin sepetinde');
-    if (soldCount > 0) socialMessages.push('\uD83D\uDCE6 <strong>' + formatNum(soldCount) + '+</strong> adet sat\u0131ld\u0131');
-
-    if (socialMessages.length > 0) {
-      var socialEl = document.createElement('span');
-      socialEl.className = 'ak-card-popular ak-rotating';
-      socialEl.innerHTML = socialMessages[0];
-      badge.appendChild(socialEl);
-
-      if (socialMessages.length > 1) {
-        (function(el, msgs) {
-          var idx = 0;
-          setInterval(function() {
-            if (!el || !document.contains(el)) return;
-            el.classList.add('ak-fade');
-            setTimeout(function() {
-              idx = (idx + 1) % msgs.length;
-              el.innerHTML = msgs[idx];
-              el.classList.remove('ak-fade');
-            }, 400);
-          }, 3500);
-        })(socialEl, socialMessages);
-      }
+    // Favori satırı
+    if (favCount > 0) {
+      html += '<span class="ak-card-fav">\u2764\uFE0F ' + formatNum(favCount) + ' ki\u015fi favoriledi</span>';
     }
+
+    badge.innerHTML = html;
 
     var point = findCardInsertionPoint(cardEl);
     if (point.ref) {
@@ -785,26 +848,59 @@
   function initListingMode() {
     // Prevent double-run on same page
     if (document.getElementById('ak-listing-active')) return;
-    var cards = findListingCards();
-    if (cards.length === 0) return;
 
     var marker = document.createElement('span');
     marker.id = 'ak-listing-active';
     marker.style.display = 'none';
     document.body.appendChild(marker);
 
-    // Process cards sequentially with small delay to avoid request flood
-    var index = 0;
-    function processNext() {
-      if (index >= cards.length) return;
-      var card = cards[index++];
-      if (card.cardEl.querySelector('.ak-card-badge')) { processNext(); return; }
-      fetchByUrl(card.productUrl, function(data) {
-        if (data) renderCardBadge(card.cardEl, data);
-        setTimeout(processNext, 80);
+    var domain = window.location.hostname;
+
+    // Use bulk API: fetch all products for this domain in one call
+    fetch(API_BASE + '/api/widget/listing?domain=' + encodeURIComponent(domain))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.products || data.products.length === 0) return;
+        listingCache = {};
+        for (var i = 0; i < data.products.length; i++) {
+          var p = data.products[i];
+          if (p.path) listingCache[p.path] = p;
+        }
+        applyListingBadges();
+        // Re-apply on DOM changes (infinite scroll, lazy load)
+        observeListingChanges();
+      })
+      .catch(function(err) {
+        console.log('[Aktarmatik] Listing veri çekilemedi:', err);
       });
+  }
+
+  function applyListingBadges() {
+    if (!listingCache) return;
+    var cards = findListingCards();
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      if (card.cardEl.querySelector('.ak-card-badge')) continue;
+      var product = listingCache[card.path];
+      if (product) {
+        renderCardBadge(card.cardEl, product);
+      }
     }
-    processNext();
+  }
+
+  function observeListingChanges() {
+    if (typeof MutationObserver === 'undefined') return;
+    var target = document.querySelector('.product-list, [class*="productList"], [class*="product-grid"], main, #__next') || document.body;
+    var listingObserver = new MutationObserver(function(mutations) {
+      var hasNew = false;
+      for (var i = 0; i < mutations.length; i++) {
+        if (mutations[i].addedNodes.length > 0) { hasNew = true; break; }
+      }
+      if (hasNew) {
+        setTimeout(applyListingBadges, 200);
+      }
+    });
+    listingObserver.observe(target, { childList: true, subtree: true });
   }
 
   // ========================
