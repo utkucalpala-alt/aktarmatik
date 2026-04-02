@@ -41,10 +41,10 @@ export async function GET(request) {
       [bc.id]
     );
 
-    const reviews = await query('SELECT author, rating, content, review_date FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 10', [bc.id]);
+    const reviews = await query('SELECT author, rating, content, review_date FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 50', [bc.id]);
 
     const questions = await query(
-      'SELECT user_name, question_text, answer_text, question_date FROM tp_questions WHERE barcode_id = $1 ORDER BY id DESC LIMIT 10',
+      'SELECT user_name, question_text, answer_text, question_date FROM tp_questions WHERE barcode_id = $1 ORDER BY id DESC LIMIT 50',
       [bc.id]
     );
 

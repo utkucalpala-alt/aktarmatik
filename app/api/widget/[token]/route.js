@@ -32,7 +32,7 @@ export async function GET(request, { params }) {
 
     // Get reviews
     const reviews = await query(
-      'SELECT author, rating, content, review_date FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 10',
+      'SELECT author, rating, content, review_date FROM tp_reviews WHERE barcode_id = $1 ORDER BY scraped_at DESC LIMIT 50',
       [widget.barcode_id]
     );
 
