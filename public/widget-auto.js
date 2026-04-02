@@ -1,4 +1,4 @@
-// AKTARMATIK Universal Widget - ikas & SPA compatible
+// AKTARMATIK Universal Widget v2.5 - ikas & SPA compatible
 // Supports: ikas, Shopify, custom e-commerce platforms
 // Handles client-side routing (SPA), dynamic content loading
 (function() {
@@ -888,6 +888,8 @@
 
       if (product) {
         renderCardBadge(card, product);
+      } else if (card.path) {
+        console.log('[Aktarmatik] No match for card path:', card.path);
       }
     }
   }
