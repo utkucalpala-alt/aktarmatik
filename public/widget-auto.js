@@ -657,6 +657,24 @@
     var seen = {};
     var hostname = window.location.hostname;
 
+    // Strategy 0 (highest priority): ikas theme with .add-to-cart-overlay > .stock > a structure
+    // softtoplus.com uses this: <div class="add-to-cart-overlay"><div class="stock btn-X"><a href="/slug">...</a></div></div>
+    var overlays = document.querySelectorAll('.add-to-cart-overlay');
+    if (overlays.length >= 2) {
+      for (var oi = 0; oi < overlays.length; oi++) {
+        var anchor = overlays[oi].querySelector('a[href]');
+        if (!anchor) continue;
+        var url = anchor.href;
+        if (!url || seen[url]) continue;
+        var path = url.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
+        if (!path || path === '' || path === '/') continue;
+        seen[url] = true;
+        // Use the overlay as the card element (outermost container)
+        results.push({ cardEl: overlays[oi], anchorEl: anchor, productUrl: url, path: path });
+      }
+      if (results.length >= 2) return results;
+    }
+
     // Strategy 1: ikas — look for known ikas card selectors
     var ikasSelectors = [
       '.product-list-item',
@@ -669,15 +687,15 @@
       if (ikasItems.length >= 2) {
         for (var ii = 0; ii < ikasItems.length; ii++) {
           var item = ikasItems[ii];
-          var anchor = item.closest('a[href]');
-          if (!anchor) anchor = item.querySelector('a[href]');
-          if (!anchor) continue;
-          var url = anchor.href;
-          if (!url || seen[url]) continue;
-          var path = url.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
-          if (!path || path === '' || path === '/') continue;
-          seen[url] = true;
-          results.push({ cardEl: anchor.closest('[class*="product"]') || anchor, productUrl: url, path: path });
+          var anchor2 = item.closest('a[href]');
+          if (!anchor2) anchor2 = item.querySelector('a[href]');
+          if (!anchor2) continue;
+          var url2 = anchor2.href;
+          if (!url2 || seen[url2]) continue;
+          var path2 = url2.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
+          if (!path2 || path2 === '' || path2 === '/') continue;
+          seen[url2] = true;
+          results.push({ cardEl: anchor2.closest('[class*="product"]') || anchor2, anchorEl: anchor2, productUrl: url2, path: path2 });
         }
         if (results.length >= 2) return results;
       }
@@ -696,92 +714,52 @@
           var cardEl2 = containers[ei];
           var linkEl = cardEl2.tagName === 'A' ? cardEl2 : cardEl2.querySelector('a[href]');
           if (!linkEl) continue;
-          var url2 = linkEl.href;
-          if (!url2 || seen[url2]) continue;
-          if (url2.indexOf(hostname) === -1 && url2.indexOf('http') === 0) continue;
-          var path2 = url2.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
-          if (!path2 || path2 === '/' || path2.indexOf('.') !== -1) continue;
-          seen[url2] = true;
-          results.push({ cardEl: cardEl2, productUrl: url2, path: path2 });
+          var url3 = linkEl.href;
+          if (!url3 || seen[url3]) continue;
+          if (url3.indexOf(hostname) === -1 && url3.indexOf('http') === 0) continue;
+          var path3 = url3.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
+          if (!path3 || path3 === '/' || path3.indexOf('.') !== -1) continue;
+          seen[url3] = true;
+          results.push({ cardEl: cardEl2, anchorEl: linkEl, productUrl: url3, path: path3 });
         }
         if (results.length >= 2) return results;
       } catch(e) {}
     }
 
-    // Strategy 3: Smart detection — find product-like anchor tags with images
-    // ikas and many platforms: product cards are <a href="/slug"> with an <img> inside
+    // Strategy 3: Smart detection — find <a> tags with images + text (product-like)
     var allAnchors = document.querySelectorAll('a[href]');
-    var productAnchors = [];
     for (var ai = 0; ai < allAnchors.length; ai++) {
       var a = allAnchors[ai];
       var href = a.getAttribute('href') || '';
-      // Must be internal link with a slug path (not /, not #, not external)
       if (href.indexOf('#') === 0 || href === '/' || href === '') continue;
       var fullUrl;
       try { fullUrl = new URL(href, window.location.origin); } catch(e) { continue; }
       if (fullUrl.hostname !== hostname) continue;
       var aPath = fullUrl.pathname.replace(/\/$/, '');
       if (!aPath || aPath === '' || aPath === '/') continue;
-      // Skip obvious non-product links (categories with too many segments, static pages)
       var segments = aPath.split('/').filter(function(s) { return s; });
       if (segments.length === 0 || segments.length > 3) continue;
-      // Must contain an image (product cards have product images)
-      var img = a.querySelector('img');
-      if (!img) continue;
-      // Must have some text content (product name)
-      var textLen = (a.textContent || '').trim().length;
-      if (textLen < 5) continue;
-      // Skip if already found
+      if (!a.querySelector('img')) continue;
+      if ((a.textContent || '').trim().length < 5) continue;
       if (seen[fullUrl.href]) continue;
       seen[fullUrl.href] = true;
-      productAnchors.push({ el: a, url: fullUrl.href, path: aPath });
-    }
-
-    // Group nearby anchors — if many similar anchors exist, they're likely product cards
-    if (productAnchors.length >= 3) {
-      for (var pi = 0; pi < productAnchors.length; pi++) {
-        var pa = productAnchors[pi];
-        // Find the best card container: walk up to find a repeated parent structure
-        var cardContainer = pa.el;
-        // Check if the anchor contains add-to-cart overlay or price info
-        var hasPrice = pa.el.querySelector('[class*="price"],[class*="Price"],[class*="fiyat"]');
-        var hasCart = pa.el.querySelector('[class*="cart"],[class*="sepet"],[class*="basket"],.add-to-cart-overlay,.stock');
-        if (hasPrice || hasCart || pa.el.querySelector('img[src*="cdn"]')) {
-          results.push({ cardEl: cardContainer, productUrl: pa.url, path: pa.path });
-        }
-      }
-    }
-
-    // Strategy 4: Even simpler — if we find add-to-cart-overlay elements, walk up to <a>
-    if (results.length < 2) {
-      var cartOverlays = document.querySelectorAll('.add-to-cart-overlay, [class*="add-to-cart"], [class*="addToCart"]');
-      for (var ci = 0; ci < cartOverlays.length; ci++) {
-        var overlay = cartOverlays[ci];
-        var parentAnchor = overlay.closest('a[href]');
-        if (!parentAnchor) {
-          // Maybe the anchor is a sibling or parent's sibling
-          var parentEl = overlay.parentElement;
-          while (parentEl && parentEl !== document.body) {
-            parentAnchor = parentEl.querySelector('a[href]') || parentEl.closest('a[href]');
-            if (parentAnchor) break;
-            parentEl = parentEl.parentElement;
-          }
-        }
-        if (!parentAnchor) continue;
-        var cUrl = parentAnchor.href;
-        if (!cUrl || seen[cUrl]) continue;
-        var cPath = cUrl.replace(/^https?:\/\/[^\/]+/, '').replace(/\/$/, '');
-        if (!cPath || cPath === '/') continue;
-        seen[cUrl] = true;
-        results.push({ cardEl: parentAnchor, productUrl: cUrl, path: cPath });
-      }
+      results.push({ cardEl: a, anchorEl: a, productUrl: fullUrl.href, path: aPath });
     }
 
     return results;
   }
 
-  function findCardInsertionPoint(cardEl) {
-    // ikas: inject into .product-list-item-info, after .add-to-cart-overlay
+  function findCardInsertionPoint(card) {
+    var cardEl = card.cardEl;
+    var anchorEl = card.anchorEl || cardEl.querySelector('a[href]') || cardEl;
+
+    // ikas theme (softtoplus): .add-to-cart-overlay > .stock > a > [content]
+    // Insert as last child of the anchor (after brand + product name)
+    if (cardEl.classList && cardEl.classList.contains('add-to-cart-overlay')) {
+      return { parent: anchorEl, ref: null };
+    }
+
+    // ikas: inject into .product-list-item-info
     var infoEl = cardEl.querySelector('.product-list-item-info, [class*="product-list-item-info"]');
     if (infoEl) {
       var overlay = infoEl.querySelector('.add-to-cart-overlay');
@@ -790,7 +768,7 @@
         : { parent: infoEl, ref: null };
     }
 
-    // ikas: insert before .add-to-cart-overlay (cart button at bottom of card)
+    // Before cart overlay
     var cartOverlay = cardEl.querySelector('.add-to-cart-overlay, [class*="add-to-cart"]');
     if (cartOverlay) {
       return { parent: cartOverlay.parentNode, ref: cartOverlay };
@@ -800,15 +778,12 @@
     var priceEl = cardEl.querySelector('[class*="price"],[class*="Price"],[class*="fiyat"]');
     if (priceEl) return { parent: priceEl.parentNode, ref: priceEl.nextSibling };
 
-    // After any text content that looks like product info
-    var genericInfo = cardEl.querySelector('[class*="information"],[class*="detail"],[class*="info"]');
-    if (genericInfo) return { parent: genericInfo, ref: null };
-
-    // Last child of the card
-    return { parent: cardEl, ref: null };
+    // Last child of anchor or card
+    return { parent: anchorEl, ref: null };
   }
 
-  function renderCardBadge(cardEl, product) {
+  function renderCardBadge(card, product) {
+    var cardEl = card.cardEl;
     var existing = cardEl.querySelector('.ak-card-badge');
     if (existing) existing.remove();
 
@@ -837,7 +812,7 @@
 
     badge.innerHTML = html;
 
-    var point = findCardInsertionPoint(cardEl);
+    var point = findCardInsertionPoint(card);
     if (point.ref) {
       point.parent.insertBefore(badge, point.ref);
     } else {
@@ -883,7 +858,7 @@
       if (card.cardEl.querySelector('.ak-card-badge')) continue;
       var product = listingCache[card.path];
       if (product) {
-        renderCardBadge(card.cardEl, product);
+        renderCardBadge(card, product);
       }
     }
   }
