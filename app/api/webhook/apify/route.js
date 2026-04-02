@@ -39,7 +39,7 @@ export async function POST(request) {
     }
 
     let safeProductName = 'Ürün', safeProductUrl = '', safeImage = '';
-    let rating = 0, reviewCount = 0, favoriteCount = 0, questionCount = 0;
+    let rating = 0, reviewCount = 0, favoriteCount = 0, questionCount = 0, cartCount = 0, soldCount = 0;
     let allReviews = [], allQuestions = [];
     let reviewSource = '';
 
@@ -59,12 +59,16 @@ export async function POST(request) {
       safeImage = (productData.images && productData.images.length > 0) ? productData.images[0].substring(0, 2000) : '';
       
       rating = productData.rating || 0;
+      // Normalize rating to max 5
+      if (rating > 5) rating = Math.round((rating / 2) * 10) / 10;
       reviewCount = productData.reviewCount || 0;
       favoriteCount = productData.favoriteCount || 0;
-      
+      cartCount = productData.cartCount || 0;
+      soldCount = productData.soldCount || 0;
+
       allReviews = scrapedData.reviews || [];
       allQuestions = scrapedData.questions || [];
-      questionCount = allQuestions.length;
+      questionCount = productData.questionCount || allQuestions.length;
       reviewSource = 'Aktarmatik Scraper';
 
     } else {
@@ -119,9 +123,9 @@ export async function POST(request) {
 
     // Insert into product data history
     await query(
-      `INSERT INTO tp_product_data (barcode_id, rating, review_count, question_count, favorite_count)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [barcodeId, rating, reviewCount, questionCount, favoriteCount]
+      `INSERT INTO tp_product_data (barcode_id, rating, review_count, question_count, favorite_count, cart_count, sold_count)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [barcodeId, rating, reviewCount, questionCount, favoriteCount, cartCount, soldCount]
     );
 
 
