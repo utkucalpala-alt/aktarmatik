@@ -1,23 +1,9 @@
 'use client';
-import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-function FAQItem({ question, answer }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="faq-item" onClick={() => setOpen(!open)}>
-      <div className="faq-q">
-        <span>{question}</span>
-        <span className={`faq-arrow ${open ? 'faq-arrow-open' : ''}`}>▾</span>
-      </div>
-      <div className={`faq-a ${open ? 'faq-a-open' : ''}`}>
-        <p>{answer}</p>
-      </div>
-    </div>
-  );
-}
+/* ───────────────────────── YARDIMCI COMPONENTLER ───────────────────────── */
 
-function AnimatedNum({ target, suffix = '' }) {
+function AnimatedCounter({ target, suffix = '', prefix = '', decimals = 0 }) {
   const [val, setVal] = useState(0);
   const ref = useRef(null);
   const started = useRef(false);
@@ -25,569 +11,1086 @@ function AnimatedNum({ target, suffix = '' }) {
     const obs = new IntersectionObserver(([e]) => {
       if (e.isIntersecting && !started.current) {
         started.current = true;
-        let s = 0;
-        const step = Math.ceil(target / 40);
-        const iv = setInterval(() => { s += step; if (s >= target) { s = target; clearInterval(iv); } setVal(s); }, 30);
+        const duration = 1800;
+        const steps = 60;
+        const increment = target / steps;
+        let current = 0;
+        const iv = setInterval(() => {
+          current += increment;
+          if (current >= target) { current = target; clearInterval(iv); }
+          setVal(decimals > 0 ? parseFloat(current.toFixed(decimals)) : Math.round(current));
+        }, duration / steps);
       }
-    }, { threshold: 0.5 });
+    }, { threshold: 0.3 });
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
-  }, [target]);
-  return <strong ref={ref}>{val.toLocaleString()}{suffix}</strong>;
+  }, [target, decimals]);
+  return <span ref={ref}>{prefix}{decimals > 0 ? val.toFixed(decimals) : val.toLocaleString('tr-TR')}{suffix}</span>;
 }
 
-export default function HomePage() {
-  const [rotateIdx, setRotateIdx] = useState(0);
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const socialMessages = [
-    { icon: '❤️', text: 'Sevilen ürün!', highlight: '30.2B kişi favoriledi!' },
-    { icon: '🛒', text: '', highlight: '2.4B kişinin sepetinde, tükenmeden al!' },
-    { icon: '📦', text: '3 günde', highlight: '250+ ürün satıldı!' },
-    { icon: '🔥', text: 'Popüler ürün!', highlight: 'Son 24 saatte 1.1B kişi görüntüledi!' },
-  ];
-
+function FAQItem({ question, answer }) {
+  const [open, setOpen] = useState(false);
+  const contentRef = useRef(null);
+  const [height, setHeight] = useState(0);
   useEffect(() => {
-    const iv = setInterval(() => setRotateIdx(p => (p + 1) % socialMessages.length), 3000);
-    return () => clearInterval(iv);
+    if (contentRef.current) setHeight(contentRef.current.scrollHeight);
+  }, [answer]);
+  return (
+    <div
+      style={{
+        background: open ? 'rgba(108,92,231,0.08)' : 'rgba(255,255,255,0.025)',
+        border: '1px solid',
+        borderColor: open ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.06)',
+        borderRadius: 16, cursor: 'pointer', overflow: 'hidden',
+        transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)',
+        marginBottom: 10
+      }}
+      onClick={() => setOpen(!open)}
+    >
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '22px 28px', fontFamily: "'Jost', sans-serif", fontWeight: 700,
+        fontSize: 17, color: open ? '#e8d5a3' : '#f0eaff'
+      }}>
+        <span>{question}</span>
+        <span style={{
+          fontSize: 22, color: '#d4af37', transition: 'transform 0.4s cubic-bezier(0.4,0,0.2,1)',
+          transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginLeft: 16
+        }}>&#9662;</span>
+      </div>
+      <div ref={contentRef} style={{
+        maxHeight: open ? height + 24 : 0, overflow: 'hidden',
+        transition: 'max-height 0.4s cubic-bezier(0.4,0,0.2,1), padding 0.4s cubic-bezier(0.4,0,0.2,1)',
+        padding: open ? '0 28px 22px' : '0 28px 0'
+      }}>
+        <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, fontFamily: "'Jost', sans-serif" }}>{answer}</p>
+      </div>
+    </div>
+  );
+}
+
+function ScrollReveal({ children, delay = 0, style = {} }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setVisible(true); obs.disconnect(); }
+    }, { threshold: 0.1 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{
+      ...style,
+      opacity: visible ? 1 : 0,
+      transform: visible ? 'translateY(0)' : 'translateY(40px)',
+      transition: `opacity 0.8s cubic-bezier(0.4,0,0.2,1) ${delay}ms, transform 0.8s cubic-bezier(0.4,0,0.2,1) ${delay}ms`
+    }}>
+      {children}
+    </div>
+  );
+}
+
+/* Lotus / Mandala ayirici */
+function LotusDivider({ color = '#d4af37' }) {
+  return (
+    <div style={{ textAlign: 'center', margin: '12px 0 20px', opacity: 0.5 }}>
+      <span style={{ fontSize: 14, color, letterSpacing: 12 }}>
+        {'\u2727'} {'\u2726'} {'\u2727'}
+      </span>
+    </div>
+  );
+}
+
+/* Dekoratif kose susu */
+function CornerOrnament({ position = 'top-left' }) {
+  const positions = {
+    'top-left': { top: -1, left: -1, borderTop: '2px solid rgba(212,175,55,0.4)', borderLeft: '2px solid rgba(212,175,55,0.4)' },
+    'top-right': { top: -1, right: -1, borderTop: '2px solid rgba(212,175,55,0.4)', borderRight: '2px solid rgba(212,175,55,0.4)' },
+    'bottom-left': { bottom: -1, left: -1, borderBottom: '2px solid rgba(212,175,55,0.4)', borderLeft: '2px solid rgba(212,175,55,0.4)' },
+    'bottom-right': { bottom: -1, right: -1, borderBottom: '2px solid rgba(212,175,55,0.4)', borderRight: '2px solid rgba(212,175,55,0.4)' },
+  };
+  return (
+    <div style={{
+      position: 'absolute', width: 24, height: 24, pointerEvents: 'none',
+      ...positions[position]
+    }} />
+  );
+}
+
+/* ───────────────────────── ANA SAYFA ───────────────────────── */
+
+export default function HomePage() {
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [demoStep, setDemoStep] = useState(0);
+  const [demoStarted, setDemoStarted] = useState(false);
+  const [sliderPos, setSliderPos] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
+  const sliderRef = useRef(null);
+  const demoRef = useRef(null);
+  const formRef = useRef(null);
+
+  // Google Fonts + scroll listener
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700;800&family=Jost:wght@300;400;500;600;700;800;900&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+
+    const handleScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Widget demo animation sequence
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !demoStarted) {
+        setDemoStarted(true);
+        let step = 0;
+        const iv = setInterval(() => {
+          step++;
+          if (step > 5) { clearInterval(iv); return; }
+          setDemoStep(step);
+        }, 900);
+      }
+    }, { threshold: 0.2 });
+    if (demoRef.current) obs.observe(demoRef.current);
+    return () => obs.disconnect();
+  }, [demoStarted]);
+
+  // Before/After slider
+  const handleSliderMove = useCallback((clientX) => {
+    if (!sliderRef.current) return;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const pct = Math.max(5, Math.min(95, (x / rect.width) * 100));
+    setSliderPos(pct);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => { if (isDragging) handleSliderMove(e.clientX); };
+    const handleMouseUp = () => setIsDragging(false);
+    const handleTouchMove = (e) => { if (isDragging) handleSliderMove(e.touches[0].clientX); };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging, handleSliderMove]);
+
+  const scrollToForm = (e) => {
+    e.preventDefault();
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  /* ─── RENKLER ─── */
+  const C = {
+    bg: '#0a0a14',
+    purple: '#7c6cf7',
+    purpleLight: '#b8a9ff',
+    purpleBright: '#a78bfa',
+    gold: '#d4af37',
+    goldLight: '#e8d5a3',
+    goldGlow: 'rgba(212,175,55,0.15)',
+    pink: '#e84393',
+    green: '#00d2a0',
+    textPrimary: '#f5f0ff',
+    textSecondary: 'rgba(255,255,255,0.65)',
+    textMuted: 'rgba(255,255,255,0.4)',
+    cardBg: 'rgba(255,255,255,0.03)',
+    cardBorder: 'rgba(212,175,55,0.1)',
+  };
+
+  const sampleReviews = [
+    { name: 'E*** K***', date: '28.03.2026', stars: 5, text: 'Kalitesi harika, beklentimin cok ustunde. Herkese tavsiye ederim, hizli da kargo yaptilar.' },
+    { name: 'A*** Y***', date: '15.03.2026', stars: 5, text: 'Urun tam aciklamada yazdigi gibi. Kullanimi cok kolay, sonuclar muhtesem.' },
+    { name: 'M*** D***', date: '02.03.2026', stars: 4, text: 'Gayet basarili bir urun. Fiyat performans orani cok iyi. Tekrar alirim.' },
+  ];
+
+  const features = [
+    { emoji: '\u2B50', title: 'Yorum & Puanlama', desc: 'Trendyol\'daki tum musteri yorumlarini ve yildiz puanlarini e-ticaret sitenizde gosterin.' },
+    { emoji: '\uD83D\uDD25', title: 'Sosyal Kanit Bandi', desc: '"X kisi bu urunu aldi", favori ve sepet sayilari ile guveni artirin.' },
+    { emoji: '\u2753', title: 'Soru & Cevap', desc: 'Trendyol\'daki soru-cevaplari urun sayfanizda otomatik gosterin.' },
+    { emoji: '\uD83D\uDCCA', title: 'Tavsiye Orani', desc: '"Alicilarin %96\'si tavsiye ediyor" gibi guclu sosyal kanit mesajlari.' },
+    { emoji: '\uD83D\uDD17', title: 'Coklu Platform', desc: 'ikas, Shopify, WordPress, IdeaSoft \u2014 tek script ile her yerde calisir.' },
+    { emoji: '\u26A1', title: 'Otomatik Guncelleme', desc: 'Veriler her 6 saatte otomatik guncellenir. Siteniz her zaman guncel kalir.' },
+  ];
+
+  const testimonials = [
+    { initials: 'AK', name: 'Ahmet Kaya', role: 'Dogal Yasam Kozmetik \u2014 Kurucu', text: 'Trendyol\'daki 4.9 puanimizi sitemizde gostermeye basladiktan sonra donusum oranimiz %38 artti. Musteriler artik dogrudan bizden siparis veriyor.' },
+    { initials: 'SY', name: 'Selin Yilmaz', role: 'BebekDunyasi \u2014 E-Ticaret Muduru', text: 'Kurulumu gercekten 3 dakika surdu. Teknik bilgim olmamasina ragmen tek satir kodla widget\'i sitemize ekledik. Sosyal kanit etkisi inanilmaz.' },
+    { initials: 'MO', name: 'Murat Ozdemir', role: 'TeknoPlus Elektronik \u2014 Genel Mudur', text: 'Sepet terk oranimiz %22 dustu. Musteriler urun sayfasinda Trendyol yorumlarini gorunce guvenip alisverisi tamamliyor.' },
+  ];
+
+  const faqs = [
+    { q: 'Aktarmatik nedir?', a: 'Aktarmatik, Trendyol\'daki musteri yorumlarini, puanlari ve sosyal kanit verilerini (favori sayisi, sepet sayisi, satis adedi) kendi e-ticaret sitenizde otomatik olarak gosteren bir widget platformudur.' },
+    { q: 'Hangi platformlarla calisir?', a: 'ikas, Shopify, WordPress (WooCommerce), IdeaSoft ve ozel yazilim altyapilariyla uyumludur. Tek satir JavaScript kodu ile her platformda calisir.' },
+    { q: 'Kurulumu ne kadar surer?', a: 'Kurulum ortalama 3 dakika surer. Script kodunu sitenize ekleyin, Trendyol URL\'lerini eslestirin, gerisini Aktarmatik halleder.' },
+    { q: 'Veriler ne siklikla guncellenir?', a: 'Trendyol\'daki yeni yorumlar, puan degisiklikleri ve sosyal kanit verileri her 6 saatte otomatik guncellenir. Siteniz her zaman guncel kalir.' },
+    { q: 'Sitemin hizini etkiler mi?', a: 'Hayir. Widget asenkron yuklenir ve sitenizin sayfa hizini etkilemez. Google PageSpeed skorunuzda herhangi bir dusus yasamazsiniz.' },
+    { q: 'Hizmet nasil baslar?', a: 'Yukaridaki formu doldurarak veya bizi 0850 309 20 49 numarasindan arayarak hizmet talebinde bulunabilirsiniz. 24 saat icinde size donus yapiyoruz.' },
+  ];
+
+  /* ─── MANDALA SVG PATTERN (background) ─── */
+  const mandalaPattern = `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='rgba(212,175,55,0.04)' stroke-width='0.5'%3E%3Ccircle cx='40' cy='40' r='30'/%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3Ccircle cx='40' cy='40' r='10'/%3E%3Cpath d='M40 10 L40 70 M10 40 L70 40 M18 18 L62 62 M62 18 L18 62'/%3E%3C/g%3E%3C/svg%3E")`;
+
   return (
-    <div className="lp">
-      {/* NAVBAR */}
-      <nav className="nav">
-        <div className="nav-in">
-          <Link href="/" className="logo">◆ AKTARMATIK</Link>
-          <button className="mob-btn" onClick={() => setMobileMenu(!mobileMenu)}>
-            {mobileMenu ? '✕' : '☰'}
+    <div style={{ fontFamily: "'Jost', sans-serif", color: C.textPrimary, background: C.bg, overflowX: 'hidden', minHeight: '100vh' }}>
+
+      {/* ──── FLOATING GRADIENT ORBS ──── */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{
+          position: 'absolute', width: 700, height: 700, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(124,108,247,0.2), transparent 70%)',
+          top: '-10%', right: '-5%', filter: 'blur(100px)',
+          animation: 'orbFloat1 10s ease-in-out infinite'
+        }} />
+        <div style={{
+          position: 'absolute', width: 550, height: 550, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.08), transparent 70%)',
+          bottom: '10%', left: '-8%', filter: 'blur(100px)',
+          animation: 'orbFloat2 12s ease-in-out infinite'
+        }} />
+        <div style={{
+          position: 'absolute', width: 400, height: 400, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(232,67,147,0.08), transparent 70%)',
+          top: '50%', left: '50%', filter: 'blur(80px)',
+          animation: 'orbFloat3 8s ease-in-out infinite'
+        }} />
+      </div>
+
+      {/* ──── NAVBAR ──── */}
+      <nav style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
+        background: scrolled ? 'rgba(10,10,20,0.95)' : 'rgba(10,10,20,0.5)',
+        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        borderBottom: `1px solid ${scrolled ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.04)'}`,
+        transition: 'all 0.4s ease'
+      }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <a href="#" style={{
+            fontFamily: "'Cormorant Garamond', serif", fontWeight: 800, fontSize: 22,
+            color: C.goldLight, textDecoration: 'none', letterSpacing: -0.5,
+            display: 'flex', alignItems: 'center', gap: 10
+          }}>
+            <span style={{ fontSize: 26, color: C.gold }}>{'\u25C6'}</span>
+            <div>
+              <div style={{ lineHeight: 1.1 }}>AKTARMATIK</div>
+              <div style={{ fontFamily: "'Jost', sans-serif", fontSize: 9, color: 'rgba(212,175,55,0.5)', fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase' }}>by Morfil Medya</div>
+            </div>
+          </a>
+          <button className="mob-btn" onClick={() => setMobileMenu(!mobileMenu)} style={{
+            display: 'none', background: 'none', border: 'none', fontSize: 28, cursor: 'pointer', color: C.goldLight
+          }}>
+            {mobileMenu ? '\u2715' : '\u2630'}
           </button>
-          <div className={`nav-links ${mobileMenu ? 'nav-open' : ''}`}>
-            <a href="#nasil" onClick={() => setMobileMenu(false)}>Nasıl Çalışır?</a>
-            <a href="#ozellikler" onClick={() => setMobileMenu(false)}>Özellikler</a>
-            <a href="#iletisim" onClick={() => setMobileMenu(false)}>İletişim</a>
-            <Link href="/giris" className="nav-btn" onClick={() => setMobileMenu(false)}>Giriş Yap</Link>
-            <a href="#iletisim" className="nav-btn nav-btn-fill" onClick={() => setMobileMenu(false)}>Hizmet Talep Et</a>
+          <div className={`nav-links ${mobileMenu ? 'nav-open' : ''}`} style={{
+            display: 'flex', alignItems: 'center', gap: 30
+          }}>
+            <a href="#demo" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600, transition: 'color 0.3s' }}>Demo</a>
+            <a href="#ozellikler" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600, transition: 'color 0.3s' }}>Ozellikler</a>
+            <a href="#sss" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600, transition: 'color 0.3s' }}>SSS</a>
+            <a href="#iletisim" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600, transition: 'color 0.3s' }}>Iletisim</a>
+            <a href="#" onClick={scrollToForm} style={{
+              padding: '10px 26px', borderRadius: 10, fontWeight: 700, fontSize: 13,
+              textDecoration: 'none', color: '#0a0a14', cursor: 'pointer', border: 'none',
+              background: 'linear-gradient(135deg, #d4af37, #f0d060)',
+              boxShadow: '0 4px 20px rgba(212,175,55,0.35)', transition: 'all 0.3s',
+              fontFamily: "'Jost', sans-serif"
+            }}>Bilgi Al</a>
           </div>
         </div>
       </nav>
 
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero-bg">
-          <div className="orb orb1"></div>
-          <div className="orb orb2"></div>
-          <div className="orb orb3"></div>
+      {/* Mobile menu overlay */}
+      {mobileMenu && (
+        <div style={{
+          position: 'fixed', top: 60, left: 0, right: 0, zIndex: 999,
+          background: 'rgba(10,10,20,0.98)', backdropFilter: 'blur(20px)',
+          padding: '28px 28px', display: 'flex', flexDirection: 'column', gap: 18,
+          borderBottom: '1px solid rgba(212,175,55,0.15)'
+        }}>
+          <a href="#demo" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: C.textSecondary, fontSize: 17, fontWeight: 600 }}>Demo</a>
+          <a href="#ozellikler" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: C.textSecondary, fontSize: 17, fontWeight: 600 }}>Ozellikler</a>
+          <a href="#sss" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: C.textSecondary, fontSize: 17, fontWeight: 600 }}>SSS</a>
+          <a href="#iletisim" onClick={() => setMobileMenu(false)} style={{ textDecoration: 'none', color: C.textSecondary, fontSize: 17, fontWeight: 600 }}>Iletisim</a>
+          <a href="#" onClick={(e) => { scrollToForm(e); setMobileMenu(false); }} style={{
+            textAlign: 'center', display: 'block', padding: '12px 26px', borderRadius: 10,
+            fontWeight: 700, fontSize: 14, color: '#0a0a14', background: 'linear-gradient(135deg, #d4af37, #f0d060)',
+            textDecoration: 'none'
+          }}>Bilgi Al</a>
         </div>
-        <div className="hero-in">
-          <div className="hero-left">
-            <div className="badge-anim">
-              <span className="badge-dot"></span> Trendyol Entegrasyonu
+      )}
+
+      {/* ──── HERO + FORM (yan yana) ──── */}
+      <section ref={formRef} id="hero" style={{
+        position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center',
+        overflow: 'hidden', backgroundImage: mandalaPattern
+      }}>
+        {/* Gold corner accents */}
+        <div style={{ position: 'absolute', top: 100, left: 40, width: 60, height: 60, pointerEvents: 'none' }}>
+          <CornerOrnament position="top-left" />
+        </div>
+        <div style={{ position: 'absolute', top: 100, right: 40, width: 60, height: 60, pointerEvents: 'none' }}>
+          <CornerOrnament position="top-right" />
+        </div>
+
+        <div style={{
+          maxWidth: 1200, margin: '0 auto', padding: '140px 28px 80px',
+          display: 'flex', alignItems: 'flex-start', gap: 60,
+          position: 'relative', zIndex: 1, width: '100%'
+        }} className="hero-flex">
+          {/* SOL: Hero content */}
+          <div style={{ flex: 1.1 }} className="hero-left-col">
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.2)',
+              color: C.goldLight, padding: '9px 20px', borderRadius: 24, fontSize: 13, fontWeight: 700,
+              marginBottom: 28
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.gold, animation: 'pulse 2s infinite' }} />
+              Trendyol Entegrasyonu
             </div>
-            <h1>
-              Trendyol Yorumlarını
-              <br />
-              <span className="grad-text">Sitenize Taşıyın</span>
+            <h1 style={{
+              fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(36px, 4.5vw, 58px)', fontWeight: 800,
+              lineHeight: 1.08, marginBottom: 24, color: 'white', letterSpacing: -2
+            }}>
+              Trendyol Yorumlarinizi{' '}
+              <span style={{
+                background: 'linear-gradient(135deg, #d4af37, #f0d060, #d4af37)',
+                backgroundSize: '200% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                animation: 'shimmer 3s linear infinite'
+              }}>Sitenize Tasiyin</span>
             </h1>
-            <p className="hero-p">
-              Trendyol&apos;daki müşteri yorumlarını, puanları ve sosyal kanıtları
-              e-ticaret sitenizde gösterin. Güvenilirliğinizi artırın, dönüşüm oranlarınızı yükseltin.
+            <p style={{ fontSize: 18, color: C.textSecondary, lineHeight: 1.8, marginBottom: 40, maxWidth: 480, fontWeight: 400 }}>
+              Trendyol&apos;daki musteri yorumlarini, puanlari ve sosyal kanitlari
+              e-ticaret sitenizde tek bir script ile gosterin.
             </p>
-            <div className="hero-nums">
-              <div className="hero-num">
-                <AnimatedNum target={45} suffix="%" />
-                <span>Dönüşüm Artışı</span>
-              </div>
-              <div className="hero-num">
-                <AnimatedNum target={3} suffix=" dk" />
-                <span>Kurulum Süresi</span>
-              </div>
-              <div className="hero-num">
-                <strong>7/24</strong>
-                <span>Oto Güncelleme</span>
-              </div>
+
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: 44, marginBottom: 40, flexWrap: 'wrap' }}>
+              {[
+                { val: <><span style={{ marginRight: 4 }}>{'\u2605'}</span><AnimatedCounter target={4.8} decimals={1} /></>, label: 'Ortalama Puan' },
+                { val: <AnimatedCounter target={45} suffix="%" />, label: 'Donusum Artisi' },
+                { val: <AnimatedCounter target={3} suffix="dk" />, label: 'Kurulum' },
+              ].map((stat, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: C.gold, fontFamily: "'Jost', sans-serif" }}>{stat.val}</div>
+                  <div style={{ fontSize: 13, color: C.textMuted, marginTop: 4, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>{stat.label}</div>
+                </div>
+              ))}
             </div>
-            <div className="hero-btns">
-              <a href="#iletisim" className="btn-glow">Hizmet Talep Et →</a>
-              <a href="#nasil" className="btn-ghost">Nasıl Çalışır?</a>
-            </div>
-            <div className="platforms">
-              <span className="plat-label">Uyumlu:</span>
-              <span className="plat-tag">ikas</span>
-              <span className="plat-tag">Shopify</span>
-              <span className="plat-tag">WordPress</span>
-              <span className="plat-tag">IdeaSoft</span>
+
+            {/* Platform tags */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Uyumlu:</span>
+              {['ikas', 'Shopify', 'WordPress', 'IdeaSoft'].map(p => (
+                <span key={p} style={{
+                  fontSize: 12, padding: '6px 14px', borderRadius: 8,
+                  background: 'rgba(212,175,55,0.06)', color: C.goldLight, fontWeight: 700,
+                  border: '1px solid rgba(212,175,55,0.15)'
+                }}>{p}</span>
+              ))}
             </div>
           </div>
-          <div className="hero-right">
-            <div className="widget-wrap">
-              <div className="widget-glow"></div>
-              <div className="widget-demo">
-                <div className="wd-top">
-                  <span className="wd-brand">SOFTTO PLUS</span>
-                  <span className="wd-fav">♡</span>
-                </div>
-                <div className="wd-name">Black Hair Şampuan 350ml</div>
-                <div className="wd-price">360 ₺</div>
-                <div className="wd-line"></div>
-                <div className="wd-row">
-                  <span className="wd-sc">4.8</span>
-                  <span className="wd-st">★★★★★</span>
-                  <span className="wd-d">·</span>
-                  <span>2.7B Değerlendirme</span>
-                  <span className="wd-d">·</span>
-                  <span>1.2B Soru-Cevap</span>
-                </div>
-                <div className="wd-green">✅ Kullanıcılar Beğeniyor! <span>Yorumları İncele ›</span></div>
-                <div className="wd-social" key={rotateIdx}>
-                  <span>{socialMessages[rotateIdx].icon}</span>
-                  <span>{socialMessages[rotateIdx].text}</span>
-                  <strong>{socialMessages[rotateIdx].highlight}</strong>
-                </div>
-                <div className="wd-rec">✅ Alıcıların <strong>%96&apos;sı</strong> bu ürünü tavsiye ediyor!</div>
-                <div className="wd-line"></div>
-                <div className="wd-rev">
-                  <div className="wd-rev-h">
-                    <span>⭐ En Faydalı Yorum</span>
-                    <span className="wd-st-sm">★★★★★</span>
+
+          {/* SAG: Form */}
+          <div style={{ flex: 0.9, maxWidth: 440, position: 'relative' }} className="hero-right-col">
+            <div style={{
+              background: 'rgba(10,10,25,0.8)', border: '1px solid rgba(212,175,55,0.2)',
+              borderRadius: 24, padding: '40px 32px', position: 'relative', overflow: 'hidden',
+              boxShadow: '0 25px 80px rgba(0,0,0,0.4), 0 0 60px rgba(212,175,55,0.05)',
+              backdropFilter: 'blur(20px)'
+            }}>
+              {/* Kose susleri */}
+              <CornerOrnament position="top-left" />
+              <CornerOrnament position="top-right" />
+              <CornerOrnament position="bottom-left" />
+              <CornerOrnament position="bottom-right" />
+              {/* Glow */}
+              <div style={{
+                position: 'absolute', top: -60, right: -60, width: 180, height: 180,
+                background: 'radial-gradient(circle, rgba(212,175,55,0.12), transparent 70%)',
+                borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none'
+              }} />
+              <h3 style={{
+                fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 800,
+                color: C.goldLight, marginBottom: 4, position: 'relative'
+              }}>Ucretsiz Demo Talep Edin</h3>
+              <LotusDivider />
+              <form action="mailto:morfilmedia@gmail.com" method="POST" encType="text/plain" style={{ position: 'relative' }}>
+                <input type="hidden" name="subject" value="Aktarmatik Hizmet Talebi" />
+                {[
+                  { label: 'Ad Soyad', name: 'Ad Soyad', type: 'text', ph: 'Adiniz Soyadiniz', req: true },
+                  { label: 'Firma Adi', name: 'Firma Adi', type: 'text', ph: 'Firma adiniz', req: true },
+                  { label: 'E-posta', name: 'E-posta', type: 'email', ph: 'ornek@firma.com', req: true },
+                  { label: 'Telefon', name: 'Telefon', type: 'tel', ph: '05XX XXX XX XX', req: true },
+                  { label: 'E-Ticaret Site URL', name: 'Site URL', type: 'url', ph: 'https://www.siteniz.com', req: false },
+                ].map((f, i) => (
+                  <div key={i} style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'rgba(212,175,55,0.7)', marginBottom: 5, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                      {f.label} {f.req && '*'}
+                    </label>
+                    <input
+                      type={f.type} name={f.name} placeholder={f.ph} required={f.req}
+                      style={{
+                        width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(212,175,55,0.12)',
+                        borderRadius: 10, padding: '12px 14px', color: 'white', fontSize: 15, fontWeight: 500,
+                        fontFamily: "'Jost', sans-serif", outline: 'none', transition: 'border-color 0.3s, box-shadow 0.3s',
+                        boxSizing: 'border-box'
+                      }}
+                      className="form-input"
+                    />
                   </div>
-                  <div className="wd-rev-t">&quot;Beyaz kapaması başarılı, uygulaması çok kolay. Saçta yapay durmuyor, doğal bir görünüm sağlıyor.&quot;</div>
-                  <div className="wd-rev-a">**** **** - 16.02.2026</div>
+                ))}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'rgba(212,175,55,0.7)', marginBottom: 5, letterSpacing: 0.5, textTransform: 'uppercase' }}>Mesaj</label>
+                  <textarea
+                    name="Mesaj" rows={3} placeholder="Hizmet hakkinda sormak istedikleriniz..."
+                    style={{
+                      width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(212,175,55,0.12)',
+                      borderRadius: 10, padding: '12px 14px', color: 'white', fontSize: 15, fontWeight: 500,
+                      fontFamily: "'Jost', sans-serif", outline: 'none', resize: 'vertical',
+                      transition: 'border-color 0.3s, box-shadow 0.3s', boxSizing: 'border-box'
+                    }}
+                    className="form-input"
+                  />
                 </div>
+                <button type="submit" style={{
+                  width: '100%', textAlign: 'center', padding: '15px 24px',
+                  background: 'linear-gradient(135deg, #d4af37, #f0d060)',
+                  color: '#0a0a14', borderRadius: 12, fontWeight: 800, fontSize: 16,
+                  border: 'none', cursor: 'pointer', fontFamily: "'Jost', sans-serif",
+                  boxShadow: '0 8px 30px rgba(212,175,55,0.3)', transition: 'all 0.3s',
+                  letterSpacing: 0.5
+                }} className="submit-btn">Hizmet Talep Et {'\u2192'}</button>
+              </form>
+              <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 18 }}>
+                  <a href="tel:08503092049" style={{ fontSize: 14, color: C.gold, textDecoration: 'none', fontWeight: 700 }}>
+                    {'\uD83D\uDCDE'} 0850 309 20 49
+                  </a>
+                  <a href="tel:05407275757" style={{ fontSize: 14, color: C.gold, textDecoration: 'none', fontWeight: 700 }}>
+                    {'\uD83D\uDCDE'} 0540 727 57 57
+                  </a>
+                </div>
+                <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 500 }}>
+                  {'\u23F0'} Size 24 saat icinde donus yapacagiz
+                </span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* NASIL CALISIR */}
-      <section className="sec" id="nasil">
-        <h2 className="sec-t">Nasıl Çalışır?</h2>
-        <p className="sec-s">3 adımda kurulum — teknik bilgi gerektirmez!</p>
-        <div className="steps">
-          <div className="step"><div className="step-n">1</div><div className="step-i">📝</div><h3>Ücretsiz Kayıt Ol</h3><p>E-posta adresinizle 30 saniyede kayıt olun. Kredi kartı gerekmez.</p></div>
-          <div className="step-arr">→</div>
-          <div className="step"><div className="step-n">2</div><div className="step-i">🔗</div><h3>Linkleri Eşleştir</h3><p>Trendyol ürün linkini ve sitenizin ürün linkini yapıştırın.</p></div>
-          <div className="step-arr">→</div>
-          <div className="step"><div className="step-n">3</div><div className="step-i">🚀</div><h3>Script&apos;i Ekle, Bitti!</h3><p>Tek satır kodu sitenize ekleyin. Widget otomatik çalışır.</p></div>
-        </div>
-        <div className="steps-cta">
-          <a href="#iletisim" className="btn-glow">Hizmet Talep Et</a>
+      {/* ──── LOTUS DIVIDER ──── */}
+      <div style={{ textAlign: 'center', padding: '20px 0', background: 'rgba(212,175,55,0.02)', borderTop: '1px solid rgba(212,175,55,0.06)', borderBottom: '1px solid rgba(212,175,55,0.06)' }}>
+        <span style={{ fontSize: 18, color: C.gold, letterSpacing: 16, opacity: 0.5 }}>
+          {'\u2727'} {'\u2022'} {'\u2726'} {'\u2022'} {'\u2727'}
+        </span>
+      </div>
+
+      {/* ──── CANLI DEMO BOLUMU ──── */}
+      <section id="demo" style={{
+        padding: '100px 28px', background: 'rgba(108,92,231,0.02)',
+        borderBottom: '1px solid rgba(212,175,55,0.06)', backgroundImage: mandalaPattern
+      }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <ScrollReveal>
+            <h2 style={{
+              textAlign: 'center', fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 'clamp(32px, 3.5vw, 48px)', fontWeight: 800, marginBottom: 6,
+              color: 'white', letterSpacing: -1
+            }}>Sistemi Kesfedin</h2>
+            <LotusDivider />
+            <p style={{ textAlign: 'center', color: C.textSecondary, fontSize: 18, marginBottom: 60, fontWeight: 400 }}>
+              Widget&apos;in sitenizde nasil calistigini canli gorun
+            </p>
+          </ScrollReveal>
+
+          {/* A) Widget Onizleme Animasyonu */}
+          <ScrollReveal delay={100}>
+            <div ref={demoRef} style={{
+              background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(212,175,55,0.12)',
+              borderRadius: 24, maxWidth: 520, margin: '0 auto 70px', padding: 0, overflow: 'hidden',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.3), 0 0 40px rgba(212,175,55,0.03)',
+              position: 'relative'
+            }}>
+              <CornerOrnament position="top-left" />
+              <CornerOrnament position="top-right" />
+              <CornerOrnament position="bottom-left" />
+              <CornerOrnament position="bottom-right" />
+              {/* Mockup product header */}
+              <div style={{ background: 'white', padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: '#999', fontWeight: 700, letterSpacing: 1 }}>MARKA ADI</span>
+                  <span style={{ fontSize: 16, color: '#ccc' }}>{'\u2661'}</span>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', marginBottom: 4 }}>Premium Bakim Serumu 50ml</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#1a1a2e' }}>489 {'\u20BA'}</div>
+              </div>
+              {/* Aktarmatik widget area */}
+              <div style={{ background: 'white', padding: '16px 24px 24px' }}>
+                <div style={{
+                  fontSize: 10, color: '#6c5ce7', fontWeight: 800, letterSpacing: 1.5,
+                  marginBottom: 12, textTransform: 'uppercase',
+                  opacity: demoStep >= 1 ? 1 : 0, transition: 'opacity 0.6s'
+                }}>AKTARMATIK WIDGET</div>
+                {/* Stars */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+                  opacity: demoStep >= 1 ? 1 : 0, transition: 'opacity 0.6s ease 0.2s'
+                }}>
+                  <span style={{ fontWeight: 900, fontSize: 22, color: '#1a1a2e' }}>4.8</span>
+                  <span>
+                    {[1,2,3,4,5].map(i => (
+                      <span key={i} style={{
+                        color: i <= 4 ? '#f39c12' : (demoStep >= 2 ? '#f39c12' : '#ddd'),
+                        fontSize: 20, transition: 'color 0.4s',
+                        transitionDelay: `${i * 150}ms`
+                      }}>{'\u2605'}</span>
+                    ))}
+                  </span>
+                  <span style={{
+                    fontSize: 14, color: '#555', fontWeight: 600,
+                    opacity: demoStep >= 2 ? 1 : 0, transition: 'opacity 0.8s ease 0.3s'
+                  }}>
+                    <AnimatedCounter target={demoStep >= 2 ? 2341 : 0} /> degerlendirme
+                  </span>
+                </div>
+                {/* Social proof band */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #fff5f5, #fff8f0)', borderRadius: 10,
+                  padding: '10px 14px', marginBottom: 10, fontSize: 14, color: '#e17055', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  transform: demoStep >= 3 ? 'translateX(0)' : 'translateX(-110%)',
+                  opacity: demoStep >= 3 ? 1 : 0,
+                  transition: 'all 0.7s cubic-bezier(0.4,0,0.2,1)'
+                }}>
+                  {'\uD83D\uDD25'} <span>1.847 kisi son 30 gunde satin aldi</span>
+                </div>
+                {/* Recommendation */}
+                <div style={{
+                  fontSize: 14, color: '#00b894', fontWeight: 700, marginBottom: 12,
+                  opacity: demoStep >= 3 ? 1 : 0, transition: 'opacity 0.6s ease 0.5s'
+                }}>{'\u2705'} Alicilarin <strong>%96&apos;si</strong> bu urunu tavsiye ediyor!</div>
+                {/* Review cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {sampleReviews.map((r, i) => (
+                    <div key={i} style={{
+                      background: 'linear-gradient(135deg, #f8f9ff, #f5f0ff)', borderRadius: 12,
+                      padding: '12px 14px', border: '1px solid rgba(108,92,231,0.06)',
+                      opacity: demoStep >= 4 ? 1 : 0,
+                      transform: demoStep >= 4 ? 'translateY(0)' : 'translateY(15px)',
+                      transition: `all 0.6s cubic-bezier(0.4,0,0.2,1) ${i * 200}ms`
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>{r.name}</span>
+                        <span style={{ color: '#f39c12', fontSize: 11 }}>{'\u2605'.repeat(r.stars)}</span>
+                      </div>
+                      <p style={{ fontSize: 13, color: '#444', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>&quot;{r.text}&quot;</p>
+                      <span style={{ fontSize: 10, color: '#bbb', marginTop: 4, display: 'block' }}>{r.date}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Q&A tab */}
+                <div style={{
+                  marginTop: 12, borderTop: '1px solid #eee', paddingTop: 12,
+                  opacity: demoStep >= 5 ? 1 : 0,
+                  transform: demoStep >= 5 ? 'translateY(0)' : 'translateY(10px)',
+                  transition: 'all 0.6s cubic-bezier(0.4,0,0.2,1) 0.2s'
+                }}>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+                    <span style={{ fontSize: 14, color: '#6c5ce7', fontWeight: 800, borderBottom: '2px solid #6c5ce7', paddingBottom: 4 }}>Soru-Cevap</span>
+                    <span style={{ fontSize: 14, color: '#999', fontWeight: 500, paddingBottom: 4 }}>Yorumlar</span>
+                  </div>
+                  <div style={{ fontSize: 13, padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <strong style={{ color: '#1a1a2e' }}>S:</strong> <span style={{ color: '#444' }}>Hassas ciltlere uygun mu?</span>
+                    <br />
+                    <span style={{ color: '#00b894', fontWeight: 700 }}>C:</span> <span style={{ color: '#444' }}>Evet, dermatolog testinden gecmistir.</span>
+                  </div>
+                  <div style={{ fontSize: 13, padding: '6px 0' }}>
+                    <strong style={{ color: '#1a1a2e' }}>S:</strong> <span style={{ color: '#444' }}>Ne kadar surede etki gosterir?</span>
+                    <br />
+                    <span style={{ color: '#00b894', fontWeight: 700 }}>C:</span> <span style={{ color: '#444' }}>Duzenli kullanim ile 2 haftada sonuc alinir.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* B) Entegrasyon Adimlari */}
+          <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 80 }}>
+            {[
+              {
+                step: 1, title: 'Script Ekle', icon: '\uD83D\uDCDD',
+                content: (
+                  <div style={{
+                    background: '#0d0d1a', borderRadius: 10, padding: '14px 16px', marginTop: 12,
+                    fontFamily: 'monospace', fontSize: 12, color: C.purpleBright, position: 'relative',
+                    border: '1px solid rgba(212,175,55,0.1)', overflow: 'hidden'
+                  }}>
+                    <div style={{ opacity: 0.5, marginBottom: 4 }}>&lt;!-- Aktarmatik Widget --&gt;</div>
+                    <div>&lt;script src=&quot;https://cdn.</div>
+                    <div>&nbsp;&nbsp;aktarmatik.com/w.js&quot;&gt;</div>
+                    <div>&lt;/script&gt;</div>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigator.clipboard?.writeText('<script src="https://cdn.aktarmatik.com/w.js"></script>');
+                        const btn = e.currentTarget;
+                        btn.textContent = 'Kopyalandi!';
+                        setTimeout(() => { btn.textContent = 'Kopyala'; }, 2000);
+                      }}
+                      style={{
+                        position: 'absolute', top: 8, right: 8, background: 'rgba(212,175,55,0.15)',
+                        border: '1px solid rgba(212,175,55,0.3)', borderRadius: 6, padding: '4px 12px',
+                        color: C.goldLight, fontSize: 11, cursor: 'pointer', fontWeight: 700,
+                        fontFamily: "'Jost', sans-serif"
+                      }}
+                    >Kopyala</button>
+                  </div>
+                )
+              },
+              {
+                step: 2, title: 'URL Esle', icon: '\uD83D\uDD17',
+                content: (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{
+                      background: '#0d0d1a', borderRadius: 10, padding: '10px 14px', marginBottom: 8,
+                      fontSize: 12, color: '#e17055', fontFamily: 'monospace', fontWeight: 600,
+                      border: '1px solid rgba(212,175,55,0.1)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    }}>trendyol.com/urun/serum-123</div>
+                    <div style={{ textAlign: 'center', fontSize: 22, color: C.gold, animation: 'arrowBounce 1.5s infinite' }}>{'\u2193'}</div>
+                    <div style={{
+                      background: '#0d0d1a', borderRadius: 10, padding: '10px 14px',
+                      fontSize: 12, color: C.green, fontFamily: 'monospace', fontWeight: 600,
+                      border: '1px solid rgba(212,175,55,0.1)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    }}>siteniz.com/urun/serum</div>
+                  </div>
+                )
+              },
+              {
+                step: 3, title: 'Otomatik Guncelle', icon: '\uD83D\uDD04',
+                content: (
+                  <div style={{ marginTop: 12, textAlign: 'center' }}>
+                    <div style={{
+                      fontSize: 52, animation: 'spin 3s linear infinite', display: 'inline-block', color: C.gold
+                    }}>{'\u21BB'}</div>
+                    <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 8, fontWeight: 500 }}>
+                      Veriler her 6 saatte otomatik guncellenir
+                    </p>
+                  </div>
+                )
+              }
+            ].map((item, i) => (
+              <ScrollReveal key={i} delay={i * 200} style={{ flex: '1 1 280px', maxWidth: 340 }}>
+                <div style={{
+                  background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20,
+                  padding: '32px 24px', textAlign: 'center', height: '100%',
+                  position: 'relative', overflow: 'hidden', transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)'
+                }} className="hover-card">
+                  <CornerOrnament position="top-left" />
+                  <CornerOrnament position="top-right" />
+                  <div style={{
+                    position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #d4af37, #f0d060)', color: '#0a0a14',
+                    width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontWeight: 900, fontSize: 15,
+                    boxShadow: '0 4px 15px rgba(212,175,55,0.4)'
+                  }}>{item.step}</div>
+                  <div style={{ fontSize: 40, marginBottom: 10, marginTop: 14 }}>{item.icon}</div>
+                  <h3 style={{ fontSize: 19, fontWeight: 800, color: C.goldLight, marginBottom: 4 }}>{item.title}</h3>
+                  {item.content}
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          {/* C) Oncesi/Sonrasi Karsilastirma */}
+          <ScrollReveal>
+            <h3 style={{
+              textAlign: 'center', fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 'clamp(26px, 3vw, 36px)', fontWeight: 800, marginBottom: 6, color: 'white'
+            }}>Oncesi / Sonrasi</h3>
+            <LotusDivider />
+            <p style={{ textAlign: 'center', color: C.textSecondary, fontSize: 16, marginBottom: 40, fontWeight: 500 }}>
+              Slider&apos;i surukleyerek farki gorun
+            </p>
+            <div
+              ref={sliderRef}
+              style={{
+                maxWidth: 700, margin: '0 auto', position: 'relative', borderRadius: 20,
+                overflow: 'hidden', border: '1px solid rgba(212,175,55,0.15)', cursor: 'ew-resize',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)', userSelect: 'none', height: 380,
+                background: 'white'
+              }}
+              onMouseDown={() => setIsDragging(true)}
+              onTouchStart={() => setIsDragging(true)}
+            >
+              {/* Before - sade sayfa */}
+              <div style={{ position: 'absolute', inset: 0, background: 'white', padding: '30px 36px' }}>
+                <div style={{ maxWidth: 300 }}>
+                  <div style={{ width: 80, height: 8, background: '#eee', borderRadius: 4, marginBottom: 16 }} />
+                  <div style={{ width: 200, height: 14, background: '#ddd', borderRadius: 4, marginBottom: 8 }} />
+                  <div style={{ width: 100, height: 20, background: '#ccc', borderRadius: 4, marginBottom: 24 }} />
+                  <div style={{ width: '100%', height: 160, background: '#f5f5f5', borderRadius: 12, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 40, color: '#ddd' }}>{'\uD83D\uDDBC'}</span>
+                  </div>
+                  <div style={{ width: '100%', height: 40, background: '#eee', borderRadius: 8, marginBottom: 12 }} />
+                  <div style={{ width: '60%', height: 10, background: '#f0f0f0', borderRadius: 4, marginBottom: 8 }} />
+                  <div style={{ width: '80%', height: 10, background: '#f0f0f0', borderRadius: 4 }} />
+                </div>
+                <div style={{
+                  position: 'absolute', bottom: 20, left: 36,
+                  background: 'rgba(220,53,69,0.1)', color: '#dc3545', fontSize: 13, fontWeight: 800,
+                  padding: '8px 16px', borderRadius: 8
+                }}>Yorum yok, sosyal kanit yok</div>
+              </div>
+              {/* After - Aktarmatik'li sayfa */}
+              <div style={{
+                position: 'absolute', inset: 0, background: 'white', padding: '30px 36px',
+                clipPath: `inset(0 ${100 - sliderPos}% 0 0)`
+              }}>
+                <div style={{ maxWidth: 300 }}>
+                  <div style={{ width: 80, height: 8, background: '#eee', borderRadius: 4, marginBottom: 16 }} />
+                  <div style={{ width: 200, height: 14, background: '#ddd', borderRadius: 4, marginBottom: 8 }} />
+                  <div style={{ width: 100, height: 20, background: '#ccc', borderRadius: 4, marginBottom: 12 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{ fontWeight: 900, color: '#1a1a2e', fontSize: 16 }}>4.8</span>
+                    <span style={{ color: '#f39c12', fontSize: 15 }}>{'\u2605\u2605\u2605\u2605\u2605'}</span>
+                    <span style={{ fontSize: 12, color: '#777', fontWeight: 600 }}>2.341 degerlendirme</span>
+                  </div>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #fff5f5, #fff8f0)', borderRadius: 8,
+                    padding: '6px 10px', fontSize: 12, color: '#e17055', fontWeight: 700, marginBottom: 8
+                  }}>{'\uD83D\uDD25'} 1.847 kisi son 30 gunde satin aldi</div>
+                  <div style={{ width: '100%', height: 100, background: '#f5f5f5', borderRadius: 12, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 30, color: '#ddd' }}>{'\uD83D\uDDBC'}</span>
+                  </div>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f8f9ff, #f5f0ff)', borderRadius: 8,
+                    padding: '8px 10px', border: '1px solid rgba(108,92,231,0.06)', marginBottom: 6
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <span style={{ fontSize: 10, color: '#888', fontWeight: 600 }}>E*** K***</span>
+                      <span style={{ color: '#f39c12', fontSize: 9 }}>{'\u2605\u2605\u2605\u2605\u2605'}</span>
+                    </div>
+                    <p style={{ fontSize: 10, color: '#444', margin: 0, lineHeight: 1.4, fontWeight: 500 }}>&quot;Harika kalite, tavsiye ederim!&quot;</p>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#00b894', fontWeight: 700 }}>{'\u2705'} %96 tavsiye orani</div>
+                </div>
+                <div style={{
+                  position: 'absolute', bottom: 20, left: 36,
+                  background: 'rgba(108,92,231,0.1)', color: '#6c5ce7', fontSize: 13, fontWeight: 800,
+                  padding: '8px 16px', borderRadius: 8
+                }}>Aktarmatik ile zengin sayfa</div>
+              </div>
+              {/* Slider handle */}
+              <div style={{
+                position: 'absolute', top: 0, bottom: 0, left: `${sliderPos}%`, width: 3,
+                background: 'linear-gradient(180deg, #d4af37, #6c5ce7)', zIndex: 10, transform: 'translateX(-50%)'
+              }}>
+                <div style={{
+                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #d4af37, #f0d060)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 20px rgba(212,175,55,0.5)', color: '#0a0a14', fontWeight: 900, fontSize: 18
+                }}>{'\u2194'}</div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* OZELLIKLER */}
-      <section className="sec sec-alt" id="ozellikler">
-        <h2 className="sec-t">Neler Sunuyoruz?</h2>
-        <p className="sec-s" style={{opacity:0.5}}>Trendyol verilerinizi en etkili şekilde kullanın</p>
-        <div className="feats">
-          {[
-            ['⭐','Yorum & Puanlama','Trendyol\'daki tüm müşteri yorumlarını ve yıldız puanlarını sitenizde gösterin.'],
-            ['🔥','Sosyal Kanıt','Favori sayısı, sepet sayısı, satış adedi gibi güven artırıcı veriler.'],
-            ['❓','Soru & Cevap','Trendyol\'daki soru-cevapları ürün sayfanızda otomatik gösterin.'],
-            ['✅','Tavsiye Oranı','"Alıcıların %96\'sı tavsiye ediyor" gibi güçlü sosyal kanıt mesajları.'],
-            ['🎯','Tüm Platformlar','ikas, Shopify, WordPress, IdeaSoft — tek script ile her yerde çalışır.'],
-            ['⚡','Otomatik Güncelleme','Trendyol\'daki yeni yorumlar otomatik çekilir, siteniz her zaman güncel kalır.'],
-          ].map(([ic,t,d],i) => (
-            <div key={i} className="feat">
-              <div className="feat-ic">{ic}</div>
-              <h3>{t}</h3>
-              <p>{d}</p>
-            </div>
+      {/* ──── LOTUS DIVIDER ──── */}
+      <div style={{ textAlign: 'center', padding: '20px 0', background: 'rgba(212,175,55,0.02)' }}>
+        <span style={{ fontSize: 18, color: C.gold, letterSpacing: 16, opacity: 0.5 }}>
+          {'\u2727'} {'\u2022'} {'\u2726'} {'\u2022'} {'\u2727'}
+        </span>
+      </div>
+
+      {/* ──── OZELLIKLER ──── */}
+      <section id="ozellikler" style={{ padding: '100px 28px', maxWidth: 1200, margin: '0 auto', backgroundImage: mandalaPattern }}>
+        <ScrollReveal>
+          <h2 style={{
+            textAlign: 'center', fontFamily: "'Cormorant Garamond', serif",
+            fontSize: 'clamp(32px, 3.5vw, 48px)', fontWeight: 800, marginBottom: 6,
+            color: 'white', letterSpacing: -1
+          }}>Neler Sunuyoruz?</h2>
+          <LotusDivider />
+          <p style={{ textAlign: 'center', color: C.textSecondary, fontSize: 18, marginBottom: 60, fontWeight: 400 }}>
+            Trendyol verilerinizi en etkili sekilde kullanin
+          </p>
+        </ScrollReveal>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22, maxWidth: 1200, margin: '0 auto'
+        }} className="features-grid">
+          {features.map((f, i) => (
+            <ScrollReveal key={i} delay={i * 100}>
+              <div style={{
+                background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20,
+                padding: '36px 28px', height: '100%', transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)',
+                position: 'relative', overflow: 'hidden'
+              }} className="hover-card">
+                <CornerOrnament position="top-right" />
+                <CornerOrnament position="bottom-left" />
+                <div style={{ fontSize: 46, marginBottom: 18 }}>{f.emoji}</div>
+                <h3 style={{ fontSize: 20, fontWeight: 800, color: C.goldLight, marginBottom: 10 }}>{f.title}</h3>
+                <p style={{ fontSize: 16, color: C.textSecondary, lineHeight: 1.7, fontWeight: 400 }}>{f.desc}</p>
+              </div>
+            </ScrollReveal>
           ))}
         </div>
       </section>
 
-      {/* GERCEK GORUNUM */}
-      <section className="sec">
-        <h2 className="sec-t">Gerçek Görünüm</h2>
-        <p className="sec-s" style={{opacity:0.5}}>Widget&apos;ın sitenizde nasıl göründüğüne bakın</p>
-        <div className="demos">
-          <div className="demo-c">
-            <h4>Sosyal Kanıt Bandı</h4>
-            <div className="demo-w">
-              <div className="wd-row" style={{fontSize:13}}><span className="wd-sc">4.8</span><span className="wd-st">★★★★★</span><span className="wd-d">·</span><span>2.7B Değerlendirme</span></div>
-              <div className="wd-green" style={{fontSize:12}}>✅ Kullanıcılar Beğeniyor!</div>
-              <div className="wd-social" style={{fontSize:12}}>❤️ Sevilen ürün! <strong>30.2B kişi favoriledi!</strong></div>
-              <div className="wd-rec" style={{fontSize:12}}>✅ Alıcıların <strong>%96&apos;sı</strong> tavsiye ediyor!</div>
-            </div>
-          </div>
-          <div className="demo-c">
-            <h4>Yorum Bölümü</h4>
-            <div className="demo-w">
-              <div className="wd-rev">
-                <div className="wd-rev-h"><span>⭐ En Faydalı Yorum</span><span className="wd-st-sm">★★★★★</span></div>
-                <div className="wd-rev-t" style={{fontSize:12}}>&quot;Ürün harika, kesinlikle tavsiye ederim.&quot;</div>
-                <div className="wd-rev-a">G** A** - 07.09.2024</div>
-              </div>
-            </div>
-          </div>
-          <div className="demo-c">
-            <h4>Soru-Cevap</h4>
-            <div className="demo-w">
-              <div style={{fontSize:12,padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}><strong>S:</strong> Kadınlar için de uygun mu?<br /><span style={{color:'#00b894'}}>C:</span> Evet uygundur</div>
-              <div style={{fontSize:12,padding:'8px 0'}}><strong>S:</strong> Kalıcılığı ne kadar?<br /><span style={{color:'#00b894'}}>C:</span> 2 hafta kalıcılık sağlar</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="sec sec-alt" id="yorumlar">
-        <h2 className="sec-t">Müşterilerimiz Ne Diyor?</h2>
-        <p className="sec-s" style={{opacity:0.5}}>Aktarmatik kullanan e-ticaret firmalarının deneyimleri</p>
-        <div className="testimonials">
-          <div className="testi-card">
-            <div className="testi-stars">★★★★★</div>
-            <p className="testi-text">&quot;Trendyol&apos;daki 4.9 puanımızı sitemizde göstermeye başladıktan sonra dönüşüm oranımız %38 arttı. Müşteriler artık doğrudan bizden sipariş veriyor.&quot;</p>
-            <div className="testi-author">
-              <div className="testi-avatar">AK</div>
-              <div>
-                <strong>Ahmet Kaya</strong>
-                <span>Doğal Yaşam Kozmetik — Kurucu</span>
-              </div>
-            </div>
-          </div>
-          <div className="testi-card">
-            <div className="testi-stars">★★★★★</div>
-            <p className="testi-text">&quot;Kurulumu gerçekten 3 dakika sürdü. Teknik bilgim olmamasına rağmen tek satır kodla widget&apos;ı sitemize ekledik. Sosyal kanıt etkisi inanılmaz.&quot;</p>
-            <div className="testi-author">
-              <div className="testi-avatar">SY</div>
-              <div>
-                <strong>Selin Yılmaz</strong>
-                <span>BebekDünyası — E-Ticaret Müdürü</span>
-              </div>
-            </div>
-          </div>
-          <div className="testi-card">
-            <div className="testi-stars">★★★★★</div>
-            <p className="testi-text">&quot;Sepet terk oranımız %22 düştü. Müşteriler ürün sayfasında Trendyol yorumlarını görünce güvenip alışverişi tamamlıyor. ROI&apos;si mükemmel.&quot;</p>
-            <div className="testi-author">
-              <div className="testi-avatar">MÖ</div>
-              <div>
-                <strong>Murat Özdemir</strong>
-                <span>TeknoPlus Elektronik — Genel Müdür</span>
-              </div>
-            </div>
+      {/* ──── TESTIMONIALS ──── */}
+      <section id="yorumlar" style={{
+        padding: '100px 28px', background: 'rgba(108,92,231,0.02)',
+        borderTop: '1px solid rgba(212,175,55,0.06)', borderBottom: '1px solid rgba(212,175,55,0.06)'
+      }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <ScrollReveal>
+            <h2 style={{
+              textAlign: 'center', fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 'clamp(32px, 3.5vw, 48px)', fontWeight: 800, marginBottom: 6,
+              color: 'white', letterSpacing: -1
+            }}>Musterilerimiz Ne Diyor?</h2>
+            <LotusDivider />
+            <p style={{ textAlign: 'center', color: C.textSecondary, fontSize: 18, marginBottom: 60, fontWeight: 400 }}>
+              Aktarmatik kullanan e-ticaret firmalarinin deneyimleri
+            </p>
+          </ScrollReveal>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22, maxWidth: 1200, margin: '0 auto'
+          }} className="testimonials-grid">
+            {testimonials.map((t, i) => (
+              <ScrollReveal key={i} delay={i * 150}>
+                <div style={{
+                  background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20,
+                  padding: '36px 28px', height: '100%', transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)',
+                  position: 'relative', overflow: 'hidden'
+                }} className="hover-card">
+                  <CornerOrnament position="top-left" />
+                  <CornerOrnament position="bottom-right" />
+                  <div style={{ color: '#f39c12', fontSize: 18, marginBottom: 18, letterSpacing: 3 }}>{'\u2605\u2605\u2605\u2605\u2605'}</div>
+                  <p style={{ fontSize: 16, color: C.textSecondary, lineHeight: 1.8, fontStyle: 'italic', marginBottom: 28, fontWeight: 400 }}>
+                    &quot;{t.text}&quot;
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #d4af37, #f0d060)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 900, fontSize: 15, color: '#0a0a14', flexShrink: 0
+                    }}>{t.initials}</div>
+                    <div>
+                      <strong style={{ display: 'block', fontSize: 15, color: C.goldLight, fontWeight: 700 }}>{t.name}</strong>
+                      <span style={{ fontSize: 13, color: C.textMuted, fontWeight: 500 }}>{t.role}</span>
+                    </div>
+                  </div>
+                </div>
+              </ScrollReveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="sec" id="sss">
-        <h2 className="sec-t">Sıkça Sorulan Sorular</h2>
-        <p className="sec-s" style={{opacity:0.5}}>Merak ettiklerinize hızlı cevaplar</p>
-        <div className="faq-list">
-          <FAQItem
-            question="Aktarmatik nedir?"
-            answer="Aktarmatik, Trendyol'daki müşteri yorumlarını, puanları ve sosyal kanıt verilerini (favori sayısı, sepet sayısı, satış adedi) kendi e-ticaret sitenizde otomatik olarak gösteren bir entegrasyon hizmetidir."
-          />
-          <FAQItem
-            question="Hangi platformlarla çalışır?"
-            answer="Aktarmatik; ikas, Shopify, WordPress (WooCommerce), IdeaSoft ve özel yazılım altyapılarıyla uyumludur. Tek satır JavaScript kodu ile her platformda çalışır."
-          />
-          <FAQItem
-            question="Kurulumu ne kadar sürer?"
-            answer="Kurulum ortalama 3 dakika sürer. Trendyol ürün linklerinizi eşleştirip, sitenize tek satır kod eklemeniz yeterlidir. Teknik bilgi gerektirmez."
-          />
-          <FAQItem
-            question="Trendyol verisi güncel kalır mı?"
-            answer="Evet, Aktarmatik Trendyol'daki yeni yorumları, puan değişikliklerini ve sosyal kanıt verilerini otomatik olarak günceller. Siteniz her zaman güncel kalır."
-          />
-          <FAQItem
-            question="Sitemin hızını etkiler mi?"
-            answer="Hayır. Widget asenkron yüklenir ve sitenizin sayfa hızını etkilemez. Google PageSpeed skorunuzda herhangi bir düşüş yaşamazsınız."
-          />
-          <FAQItem
-            question="Hizmet nasıl başlar?"
-            answer="Aşağıdaki formu doldurarak veya bizi 0850 309 20 49 numarasından arayarak hizmet talebinde bulunabilirsiniz. 24 saat içinde size dönüş yapıyoruz."
-          />
+      {/* ──── FAQ ──── */}
+      <section id="sss" style={{ padding: '100px 28px', maxWidth: 1200, margin: '0 auto' }}>
+        <ScrollReveal>
+          <h2 style={{
+            textAlign: 'center', fontFamily: "'Cormorant Garamond', serif",
+            fontSize: 'clamp(32px, 3.5vw, 48px)', fontWeight: 800, marginBottom: 6,
+            color: 'white', letterSpacing: -1
+          }}>Sikca Sorulan Sorular</h2>
+          <LotusDivider />
+          <p style={{ textAlign: 'center', color: C.textSecondary, fontSize: 18, marginBottom: 60, fontWeight: 400 }}>
+            Merak ettiklerinize hizli cevaplar
+          </p>
+        </ScrollReveal>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          {faqs.map((f, i) => (
+            <ScrollReveal key={i} delay={i * 80}>
+              <FAQItem question={f.q} answer={f.a} />
+            </ScrollReveal>
+          ))}
         </div>
       </section>
 
-      {/* ILETISIM FORMU */}
-      <section className="sec sec-alt" id="iletisim">
-        <h2 className="sec-t">Hizmet Talep Edin</h2>
-        <p className="sec-s" style={{opacity:0.5}}>Formu doldurun, size 24 saat içinde dönüş yapacağız</p>
-        <div className="contact-wrap">
-          <form className="contact-form" action="mailto:morfilmedia@gmail.com" method="POST" encType="text/plain">
-            <input type="hidden" name="subject" value="Aktarmatik Hizmet Talebi" />
-            <div className="form-row">
-              <div className="form-group">
-                <label>Ad Soyad *</label>
-                <input type="text" name="Ad Soyad" placeholder="Adınız Soyadınız" required />
-              </div>
-              <div className="form-group">
-                <label>Firma Adı *</label>
-                <input type="text" name="Firma Adi" placeholder="Firma adınız" required />
-              </div>
+      {/* ──── IKINCI CTA ──── */}
+      <section id="iletisim" style={{
+        padding: '100px 28px', background: 'rgba(108,92,231,0.02)',
+        borderTop: '1px solid rgba(212,175,55,0.06)', borderBottom: '1px solid rgba(212,175,55,0.06)',
+        textAlign: 'center', position: 'relative', overflow: 'hidden', backgroundImage: mandalaPattern
+      }}>
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          width: 600, height: 600, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(212,175,55,0.08), transparent 70%)',
+          filter: 'blur(60px)', pointerEvents: 'none'
+        }} />
+        <div style={{ maxWidth: 600, margin: '0 auto', position: 'relative' }}>
+          <ScrollReveal>
+            <h2 style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 'clamp(32px, 3.5vw, 48px)', fontWeight: 800, marginBottom: 6, color: 'white'
+            }}>Hemen Baslayin</h2>
+            <LotusDivider />
+            <p style={{ fontSize: 18, color: C.textSecondary, lineHeight: 1.8, marginBottom: 40, fontWeight: 400 }}>
+              Trendyol yorumlarinizi e-ticaret sitenize tasiyin,
+              donusum oranlarinizi artirin.
+            </p>
+            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 36 }}>
+              <a href="#" onClick={scrollToForm} style={{
+                display: 'inline-block', padding: '16px 40px',
+                background: 'linear-gradient(135deg, #d4af37, #f0d060)', color: '#0a0a14',
+                borderRadius: 14, fontWeight: 800, fontSize: 17, textDecoration: 'none',
+                boxShadow: '0 8px 35px rgba(212,175,55,0.35)', transition: 'all 0.3s',
+                fontFamily: "'Jost', sans-serif"
+              }} className="submit-btn">Bilgi Al {'\u2192'}</a>
+              <a href="tel:08503092049" style={{
+                display: 'inline-flex', alignItems: 'center', padding: '16px 36px',
+                border: '1px solid rgba(212,175,55,0.25)', color: C.goldLight,
+                borderRadius: 14, fontWeight: 700, fontSize: 17, textDecoration: 'none',
+                transition: 'all 0.3s', fontFamily: "'Jost', sans-serif"
+              }}>{'\uD83D\uDCDE'} 0850 309 20 49</a>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Telefon *</label>
-                <input type="tel" name="Telefon" placeholder="05XX XXX XX XX" required />
-              </div>
-              <div className="form-group">
-                <label>E-posta *</label>
-                <input type="email" name="E-posta" placeholder="ornek@firma.com" required />
-              </div>
+            <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href="tel:08503092049" style={{ fontSize: 15, color: C.gold, textDecoration: 'none', fontWeight: 700 }}>
+                {'\uD83D\uDCDE'} 0850 309 20 49
+              </a>
+              <a href="tel:05407275757" style={{ fontSize: 15, color: C.gold, textDecoration: 'none', fontWeight: 700 }}>
+                {'\uD83D\uDCDE'} 0540 727 57 57
+              </a>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>E-Ticaret Site URL</label>
-                <input type="url" name="Site URL" placeholder="https://www.siteniz.com" />
-              </div>
-              <div className="form-group">
-                <label>Trendyol Magaza URL</label>
-                <input type="url" name="Trendyol URL" placeholder="https://www.trendyol.com/magaza/..." />
-              </div>
-            </div>
-            <div className="form-group form-full">
-              <label>Mesaj</label>
-              <textarea name="Mesaj" rows={4} placeholder="Hizmet hakkında sormak istedikleriniz..."></textarea>
-            </div>
-            <button type="submit" className="btn-glow form-submit">Hizmet Talep Et →</button>
-          </form>
-          <div className="contact-info">
-            <div className="contact-info-card">
-              <div className="ci-icon">📞</div>
-              <div>
-                <strong>Bizi Arayın</strong>
-                <a href="tel:08503092049">0850 309 20 49</a>
-                <a href="tel:05407275757">0540 727 57 57</a>
-              </div>
-            </div>
-            <div className="contact-info-card">
-              <div className="ci-icon">✉️</div>
-              <div>
-                <strong>E-posta</strong>
-                <a href="mailto:morfilmedia@gmail.com">morfilmedia@gmail.com</a>
-              </div>
-            </div>
-            <div className="contact-info-card">
-              <div className="ci-icon">⏰</div>
-              <div>
-                <strong>Yanıt Süresi</strong>
-                <span>24 saat içinde dönüş</span>
-              </div>
-            </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="foot">
-        <div className="foot-in">
-          <div><strong className="foot-logo">◆ AKTARMATIK</strong><p>Trendyol verilerinizi e-ticaret sitenize taşıyın.</p><div className="foot-phones"><a href="tel:08503092049">📞 0850 309 20 49</a><a href="tel:05407275757">📞 0540 727 57 57</a></div><p style={{fontSize:11,opacity:0.3}}>Morfil Media tarafından geliştirilmiştir.</p></div>
-          <div className="foot-links">
-            <a href="#nasil">Nasıl Çalışır?</a>
-            <a href="#ozellikler">Özellikler</a>
-            <a href="#sss">SSS</a>
-            <a href="#iletisim">İletişim</a>
-            <Link href="/giris">Giriş Yap</Link>
+      {/* ──── FOOTER ──── */}
+      <footer style={{
+        background: '#06060c', borderTop: '1px solid rgba(212,175,55,0.08)',
+        color: 'white', padding: '52px 28px 36px'
+      }}>
+        <div style={{
+          maxWidth: 1200, margin: '0 auto', display: 'flex',
+          justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 32
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 24, color: C.gold }}>{'\u25C6'}</span>
+              <div>
+                <strong style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, color: C.goldLight }}>AKTARMATIK</strong>
+                <div style={{ fontFamily: "'Jost', sans-serif", fontSize: 10, color: 'rgba(212,175,55,0.4)', letterSpacing: 1.5 }}>by Morfil Medya</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 14, color: C.textMuted, maxWidth: 280, lineHeight: 1.7, marginBottom: 14, fontWeight: 400 }}>
+              Trendyol verilerinizi e-ticaret sitenize tasiyin.
+            </p>
+            <div style={{ display: 'flex', gap: 18, marginBottom: 8 }}>
+              <a href="tel:08503092049" style={{ color: C.gold, textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>{'\uD83D\uDCDE'} 0850 309 20 49</a>
+              <a href="tel:05407275757" style={{ color: C.gold, textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>{'\uD83D\uDCDE'} 0540 727 57 57</a>
+            </div>
           </div>
+          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+            <a href="#demo" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none', fontSize: 14, fontWeight: 500, transition: 'color 0.2s' }}>Demo</a>
+            <a href="#ozellikler" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none', fontSize: 14, fontWeight: 500, transition: 'color 0.2s' }}>Ozellikler</a>
+            <a href="#sss" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none', fontSize: 14, fontWeight: 500, transition: 'color 0.2s' }}>SSS</a>
+            <a href="#iletisim" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'none', fontSize: 14, fontWeight: 500, transition: 'color 0.2s' }}>Iletisim</a>
+          </div>
+        </div>
+        <div style={{
+          maxWidth: 1200, margin: '36px auto 0', paddingTop: 20,
+          borderTop: '1px solid rgba(212,175,55,0.06)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12
+        }}>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>
+            {'\u00A9'} {new Date().getFullYear()} Aktarmatik. Morfil Medya tarafindan gelistirilmistir.
+          </span>
+          <a href="https://aktarmatik.webtasarimi.net" target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 13, color: 'rgba(212,175,55,0.3)', textDecoration: 'none', fontWeight: 500 }}>
+            aktarmatik.webtasarimi.net
+          </a>
         </div>
       </footer>
 
+      {/* ──── GLOBAL CSS ──── */}
       <style jsx>{`
-        *{box-sizing:border-box;margin:0;padding:0}
-        .lp{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#e0e0f0;background:#0a0a14;overflow-x:hidden}
+        @keyframes orbFloat1 { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-40px) scale(1.08); } }
+        @keyframes orbFloat2 { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(30px) scale(1.05); } }
+        @keyframes orbFloat3 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-20px, -25px) scale(1.1); } }
+        @keyframes shimmer { to { background-position: 200% center; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.5); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes arrowBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
 
-        /* NAV */
-        .nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,20,0.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(108,92,231,0.1)}
-        .nav-in{max-width:1200px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
-        .logo{font-weight:900;font-size:18px;color:#6c5ce7;text-decoration:none;letter-spacing:-0.5px}
-        .nav-links{display:flex;align-items:center;gap:20px}
-        .nav-links a{text-decoration:none;color:rgba(255,255,255,0.6);font-size:13px;font-weight:500;transition:color 0.2s}
-        .nav-links a:hover{color:#6c5ce7}
-        .nav-btn{padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px;text-decoration:none;color:rgba(255,255,255,0.7);transition:all 0.2s}
-        .nav-btn-fill{background:linear-gradient(135deg,#6c5ce7,#a855f7);color:white!important;box-shadow:0 4px 15px rgba(108,92,231,0.3)}
-        .nav-btn-fill:hover{box-shadow:0 6px 25px rgba(108,92,231,0.5);transform:translateY(-1px)}
-        .mob-btn{display:none;background:none;border:none;font-size:24px;cursor:pointer;color:#e0e0f0}
-
-        /* HERO */
-        .hero{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden}
-        .hero-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-        .orb{position:absolute;border-radius:50%;filter:blur(100px);animation:float 8s ease-in-out infinite}
-        .orb1{width:600px;height:600px;background:radial-gradient(circle,rgba(108,92,231,0.25),transparent 70%);top:-15%;right:5%;animation-delay:0s}
-        .orb2{width:500px;height:500px;background:radial-gradient(circle,rgba(232,67,147,0.15),transparent 70%);bottom:-10%;left:-10%;animation-delay:-3s}
-        .orb3{width:350px;height:350px;background:radial-gradient(circle,rgba(0,184,148,0.12),transparent 70%);top:50%;right:-8%;animation-delay:-5s}
-        @keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.05)}}
-        .hero-in{max-width:1200px;margin:0 auto;padding:130px 24px 80px;display:flex;align-items:center;gap:60px;position:relative;z-index:1}
-        .hero-left{flex:1}
-        .badge-anim{display:inline-flex;align-items:center;gap:8px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.2);color:#a78bfa;padding:8px 16px;border-radius:24px;font-size:13px;font-weight:600;margin-bottom:20px}
-        .badge-dot{width:8px;height:8px;border-radius:50%;background:#6c5ce7;animation:pulse 2s infinite}
-        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.4)}}
-        .hero-left h1{font-size:52px;font-weight:900;line-height:1.08;margin-bottom:20px;letter-spacing:-1.5px;color:white}
-        .grad-text{background:linear-gradient(135deg,#6c5ce7,#e84393,#6c5ce7);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 3s linear infinite}
-        @keyframes shimmer{to{background-position:200% center}}
-        .hero-p{font-size:17px;color:rgba(255,255,255,0.55);line-height:1.7;margin-bottom:28px;max-width:480px}
-        .hero-nums{display:flex;gap:36px;margin-bottom:32px}
-        .hero-num strong{display:block;font-size:28px;color:#a78bfa;font-weight:800}
-        .hero-num span{font-size:12px;color:rgba(255,255,255,0.4);font-weight:500}
-        .hero-btns{display:flex;gap:12px;margin-bottom:28px}
-        .btn-glow{display:inline-block;padding:15px 32px;background:linear-gradient(135deg,#6c5ce7,#a855f7);color:white;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 8px 30px rgba(108,92,231,0.35);transition:all 0.3s}
-        .btn-glow:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(108,92,231,0.55)}
-        .btn-ghost{display:inline-flex;align-items:center;padding:15px 32px;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:12px;font-weight:600;font-size:15px;text-decoration:none;transition:all 0.2s}
-        .btn-ghost:hover{border-color:rgba(108,92,231,0.5);color:white;background:rgba(108,92,231,0.05)}
-        .platforms{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-        .plat-label{font-size:12px;color:rgba(255,255,255,0.35)}
-        .plat-tag{font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(108,92,231,0.08);color:#a78bfa;font-weight:600;border:1px solid rgba(108,92,231,0.15)}
-
-        /* WIDGET */
-        .hero-right{flex:1;max-width:420px;position:relative}
-        .widget-wrap{position:relative;animation:widgetFloat 4s ease-in-out infinite}
-        @keyframes widgetFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-        .widget-glow{position:absolute;inset:-30px;border-radius:28px;background:linear-gradient(135deg,rgba(108,92,231,0.2),rgba(232,67,147,0.12));filter:blur(40px);z-index:-1}
-        .widget-demo{background:white;border-radius:20px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1)}
-        .wd-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-        .wd-brand{font-size:11px;color:#999;font-weight:600;letter-spacing:1px}
-        .wd-fav{font-size:18px;color:#ccc}
-        .wd-name{font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:4px}
-        .wd-price{font-size:24px;font-weight:800;color:#1a1a2e;margin-bottom:12px}
-        .wd-line{height:1px;background:linear-gradient(90deg,transparent,#eee,transparent);margin:12px 0}
-        .wd-row{display:flex;align-items:center;gap:6px;font-size:13px;color:#666;flex-wrap:wrap}
-        .wd-sc{font-weight:800;font-size:16px;color:#1a1a2e}
-        .wd-st{color:#f39c12}
-        .wd-d{color:#ddd}
-        .wd-green{color:#00b894;font-size:13px;font-weight:600;margin:8px 0}
-        .wd-green span{color:#6c5ce7;cursor:pointer;font-weight:500;margin-left:4px}
-        .wd-social{font-size:13px;color:#e17055;margin:6px 0;display:flex;gap:4px;align-items:center;animation:fadeIn 0.4s}
-        .wd-social strong{color:#e17055}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-        .wd-rec{font-size:13px;color:#00b894;margin:6px 0}
-        .wd-rev{background:linear-gradient(135deg,#f8f9ff,#f0f0ff);border-radius:12px;padding:14px;margin-top:8px;border:1px solid rgba(108,92,231,0.06)}
-        .wd-rev-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700;color:#1a1a2e}
-        .wd-st-sm{color:#f39c12;font-size:12px}
-        .wd-rev-t{font-size:13px;color:#555;font-style:italic;line-height:1.5}
-        .wd-rev-a{font-size:11px;color:#999;margin-top:8px}
-
-        /* SECTIONS */
-        .sec{padding:90px 24px;max-width:1200px;margin:0 auto}
-        .sec-alt{background:rgba(108,92,231,0.03);max-width:100%;border-top:1px solid rgba(108,92,231,0.06);border-bottom:1px solid rgba(108,92,231,0.06)}
-        .sec-alt > *{max-width:1200px;margin-left:auto;margin-right:auto}
-        .sec-t{text-align:center;font-size:38px;font-weight:900;margin-bottom:8px;letter-spacing:-0.5px;color:white}
-        .sec-s{text-align:center;color:rgba(255,255,255,0.45);font-size:16px;margin-bottom:52px}
-
-        /* STEPS */
-        .steps{display:flex;align-items:flex-start;justify-content:center;gap:20px}
-        .step{text-align:center;flex:1;max-width:280px;padding:36px 24px;background:rgba(255,255,255,0.03);border-radius:20px;border:1px solid rgba(255,255,255,0.06);position:relative;transition:all 0.3s}
-        .step:hover{transform:translateY(-6px);border-color:rgba(108,92,231,0.2);background:rgba(108,92,231,0.04)}
-        .step-n{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6c5ce7,#a855f7);color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 4px 15px rgba(108,92,231,0.4)}
-        .step-i{font-size:40px;margin-bottom:14px}
-        .step h3{font-size:17px;font-weight:700;margin-bottom:8px;color:white}
-        .step p{font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6}
-        .step-arr{font-size:24px;color:rgba(255,255,255,0.15);margin-top:65px}
-        .steps-cta{text-align:center;margin-top:44px}
-
-        /* FEATURES */
-        .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1200px;margin:0 auto;padding:0 24px}
-        .feat{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:20px;padding:28px;transition:all 0.3s}
-        .feat:hover{transform:translateY(-4px);border-color:rgba(108,92,231,0.25);background:rgba(108,92,231,0.04)}
-        .feat-ic{font-size:36px;margin-bottom:14px}
-        .feat h3{font-size:17px;font-weight:700;margin-bottom:8px;color:white}
-        .feat p{font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6}
-
-        /* DEMOS */
-        .demos{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-        .demo-c{background:rgba(255,255,255,0.03);border-radius:20px;padding:24px;border:1px solid rgba(255,255,255,0.06);transition:all 0.3s}
-        .demo-c:hover{transform:translateY(-4px);border-color:rgba(108,92,231,0.2)}
-        .demo-c h4{font-size:14px;font-weight:700;margin-bottom:12px;color:#a78bfa}
-        .demo-w{padding:8px 0}
-
-        /* TESTIMONIALS */
-        .testimonials{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1200px;margin:0 auto;padding:0 24px}
-        .testi-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:20px;padding:28px;transition:all 0.3s}
-        .testi-card:hover{transform:translateY(-4px);border-color:rgba(108,92,231,0.25);background:rgba(108,92,231,0.04)}
-        .testi-stars{color:#f39c12;font-size:16px;margin-bottom:14px}
-        .testi-text{font-size:14px;color:rgba(255,255,255,0.6);line-height:1.7;font-style:italic;margin-bottom:20px}
-        .testi-author{display:flex;align-items:center;gap:12px}
-        .testi-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:white;flex-shrink:0}
-        .testi-author strong{display:block;font-size:14px;color:white;font-weight:700}
-        .testi-author span{font-size:12px;color:rgba(255,255,255,0.4)}
-
-        /* FAQ */
-        .faq-list{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
-        .faq-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:0;cursor:pointer;transition:all 0.3s;overflow:hidden}
-        .faq-item:hover{border-color:rgba(108,92,231,0.25);background:rgba(108,92,231,0.04)}
-        .faq-q{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;font-weight:700;font-size:15px;color:white}
-        .faq-arrow{font-size:18px;color:#6c5ce7;transition:transform 0.3s}
-        .faq-arrow-open{transform:rotate(180deg)}
-        .faq-a{max-height:0;overflow:hidden;transition:max-height 0.35s ease,padding 0.35s ease;padding:0 24px}
-        .faq-a-open{max-height:200px;padding:0 24px 20px}
-        .faq-a p{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7}
-
-        /* CONTACT FORM */
-        .contact-wrap{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 280px;gap:32px;padding:0 24px}
-        .contact-form{display:flex;flex-direction:column;gap:16px}
-        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-        .form-group{display:flex;flex-direction:column;gap:6px}
-        .form-group label{font-size:13px;font-weight:600;color:rgba(255,255,255,0.6)}
-        .form-group input,.form-group textarea{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 16px;color:white;font-size:14px;font-family:inherit;transition:border-color 0.2s;outline:none;resize:vertical}
-        .form-group input::placeholder,.form-group textarea::placeholder{color:rgba(255,255,255,0.25)}
-        .form-group input:focus,.form-group textarea:focus{border-color:rgba(108,92,231,0.5)}
-        .form-full{width:100%}
-        .form-submit{border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center}
-        .contact-info{display:flex;flex-direction:column;gap:16px}
-        .contact-info-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px;display:flex;gap:14px;align-items:flex-start;transition:all 0.3s}
-        .contact-info-card:hover{border-color:rgba(108,92,231,0.2)}
-        .ci-icon{font-size:24px}
-        .contact-info-card strong{display:block;font-size:14px;color:white;margin-bottom:4px}
-        .contact-info-card a,.contact-info-card span{display:block;font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;transition:color 0.2s}
-        .contact-info-card a:hover{color:#a78bfa}
-
-        /* FOOTER PHONES */
-        .foot-phones{display:flex;gap:16px;margin-top:8px;margin-bottom:4px}
-        .foot-phones a{color:#a78bfa;text-decoration:none;font-size:13px;font-weight:600;transition:color 0.2s}
-        .foot-phones a:hover{color:white}
-
-        /* FOOTER */
-        .foot{background:#06060c;border-top:1px solid rgba(255,255,255,0.04);color:white;padding:48px 24px}
-        .foot-in{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-start}
-        .foot-logo{font-size:18px;color:#6c5ce7}
-        .foot-in p{font-size:13px;opacity:0.4;margin-top:8px}
-        .foot-links{display:flex;gap:24px}
-        .foot-links a{color:rgba(255,255,255,0.4);text-decoration:none;font-size:13px;transition:color 0.2s}
-        .foot-links a:hover{color:white}
-
-        /* RESPONSIVE */
-        @media(max-width:1024px){
-          .hero-in{gap:40px}
-          .hero-left h1{font-size:42px}
-          .feats{grid-template-columns:repeat(2,1fr)}
-          .testimonials{grid-template-columns:repeat(2,1fr)}
-          .contact-wrap{grid-template-columns:1fr}
+        .hover-card:hover {
+          transform: translateY(-8px) !important;
+          border-color: rgba(212, 175, 55, 0.35) !important;
+          background: rgba(212, 175, 55, 0.04) !important;
+          box-shadow: 0 16px 50px rgba(212, 175, 55, 0.08), 0 0 30px rgba(108, 92, 231, 0.05) !important;
         }
-        @media(max-width:768px){
-          .mob-btn{display:block}
-          .nav-links{display:none;position:absolute;top:100%;left:0;right:0;background:rgba(10,10,20,0.98);flex-direction:column;padding:20px 24px;gap:12px;border-top:1px solid rgba(108,92,231,0.1)}
-          .nav-open{display:flex}
-          .hero-in{flex-direction:column;padding-top:100px;padding-bottom:60px;text-align:center}
-          .hero-left h1{font-size:34px}
-          .hero-p{margin-left:auto;margin-right:auto}
-          .hero-nums{justify-content:center;gap:20px}
-          .hero-btns{justify-content:center;flex-wrap:wrap}
-          .platforms{justify-content:center}
-          .hero-right{max-width:100%;width:100%}
-          .widget-wrap{max-width:360px;margin:0 auto}
-          .steps{flex-direction:column;align-items:center}
-          .step-arr{display:none}
-          .feats{grid-template-columns:1fr;max-width:400px;margin:0 auto}
-          .demos{grid-template-columns:1fr}
-          .testimonials{grid-template-columns:1fr}
-          .contact-wrap{grid-template-columns:1fr}
-          .contact-info{flex-direction:row;flex-wrap:wrap}
-          .form-row{grid-template-columns:1fr}
-          .foot-in{flex-direction:column;gap:24px}
-          .foot-phones{flex-direction:column;gap:6px}
-          .foot-links{flex-wrap:wrap;gap:16px}
+
+        .submit-btn:hover {
+          transform: translateY(-3px) !important;
+          box-shadow: 0 12px 45px rgba(212, 175, 55, 0.5) !important;
         }
-        @media(max-width:480px){
-          .hero-left h1{font-size:28px}
-          .hero-nums{flex-wrap:wrap;gap:16px}
-          .hero-num strong{font-size:22px}
-          .sec-t{font-size:28px}
-          .btn-glow,.btn-ghost{padding:12px 24px;font-size:14px}
-          .widget-demo{padding:18px}
+
+        .form-input:focus {
+          border-color: rgba(212, 175, 55, 0.4) !important;
+          box-shadow: 0 0 20px rgba(212, 175, 55, 0.08) !important;
         }
+
+        .form-input::placeholder {
+          color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .mob-btn { display: none !important; }
+
+        a:hover { color: #e8d5a3 !important; }
+
+        /* 1024px */
+        @media (max-width: 1024px) {
+          .features-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .testimonials-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+
+        /* 768px */
+        @media (max-width: 768px) {
+          .mob-btn { display: block !important; }
+          .nav-links { display: none !important; }
+          .nav-open { display: flex !important; }
+          .hero-flex { flex-direction: column !important; padding-top: 100px !important; gap: 40px !important; }
+          .hero-left-col { text-align: center !important; }
+          .hero-left-col > div:nth-child(4) { justify-content: center !important; }
+          .hero-left-col > div:last-child { justify-content: center !important; }
+          .hero-right-col { max-width: 100% !important; width: 100% !important; }
+          .features-grid { grid-template-columns: 1fr !important; max-width: 440px !important; margin: 0 auto !important; }
+          .testimonials-grid { grid-template-columns: 1fr !important; max-width: 440px !important; margin: 0 auto !important; }
+        }
+
+        /* 480px */
+        @media (max-width: 480px) {
+          .hero-left-col h1 { font-size: 28px !important; }
+          .hero-left-col > div:nth-child(4) { gap: 20px !important; flex-wrap: wrap !important; }
+        }
+      `}</style>
+      <style jsx global>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: #0a0a14; }
       `}</style>
     </div>
   );
